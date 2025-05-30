@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fp_ppb/services/firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/firebase_auth_service.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -62,7 +64,20 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Categories')),
+      appBar: AppBar(
+        title: Text('Categories'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await FirebaseAuthService.signOut();
+              // AuthGate will handle navigation to LoginScreen
+            },
+          ),
+        ],
+        automaticallyImplyLeading: false,
+      ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () => openCategoryBox(),
