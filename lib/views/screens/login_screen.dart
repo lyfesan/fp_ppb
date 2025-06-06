@@ -238,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: _loginUser,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Login',
                           style: TextStyle(
                               fontSize: 18,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer
+                              color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       ),
@@ -286,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           "Register",
                           style: TextStyle(
                             //fontSize: 18,
-                            color: Theme.of(context).colorScheme.primary,
+                            //color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

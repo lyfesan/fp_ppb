@@ -99,8 +99,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: Text('Name'),
                     prefixIcon: const Icon(Icons.person),
                     hintText: 'Enter your name',
-                    // filled: true,
-                    // fillColor: Colors.grey[100],
+                    filled: true,
+                    fillColor: Colors.grey[100],
                     focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
@@ -142,8 +142,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: Text('Email'),
                     prefixIcon: const Icon(Icons.email),
                     hintText: 'Enter your email',
-                    // filled: true,
-                    // fillColor: Colors.grey[100],
+                    filled: true,
+                    fillColor: Colors.grey[100],
                     focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
@@ -211,8 +211,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: Text('Password'),
                     hintText: 'Enter your password',
                     prefixIcon: const Icon(Icons.lock),
-                    // filled: true,
-                    // fillColor: Colors.grey[100],
+                    filled: true,
+                    fillColor: Colors.grey[100],
                     focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
@@ -258,8 +258,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: Text('Confirm Password'),
                     hintText: 'Re-enter your password',
                     prefixIcon: const Icon(Icons.lock),
-                    //filled: true,
-                    //fillColor: Colors.grey[100],
+                    filled: true,
+                    fillColor: Colors.grey[100],
                     focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
@@ -383,7 +383,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: ElevatedButton(
                       onPressed: _registerUser,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -394,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           'Register',
                           style: TextStyle(
                               fontSize: 18,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer
+                              color: Theme.of(context).colorScheme.onPrimary
                           ),
                         ),
                       ),
