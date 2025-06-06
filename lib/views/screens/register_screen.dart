@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -36,6 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final userCredential = await FirebaseAuthService.signUpWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
+          name: _nameController.text.trim(),
         );
 
         if (userCredential == null) {
@@ -65,6 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -89,6 +92,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 30),
+                TextFormField(
+                  controller: _nameController,
+                  keyboardType: TextInputType.name,
+                  decoration: InputDecoration(
+                    label: Text('Name'),
+                    prefixIcon: const Icon(Icons.person),
+                    hintText: 'Enter your name',
+                    // filled: true,
+                    // fillColor: Colors.grey[100],
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2.5,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  cursorColor: Theme.of(context).colorScheme.primary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
