@@ -149,15 +149,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                         return CategoryModel.fromFirestore(doc);
                       }).toList();
 
-                  // Cek apakah ID yang tersimpan masih valid di antara daftar kategori yang ada
                   final categoryIds = categories.map((e) => e.id).toList();
                   if (!categoryIds.contains(_selectedCategoryId)) {
                     // Jika kategori lama sudah dihapus, reset pilihan
                     _selectedCategoryId = null;
                   }
-                  // --- PERUBAHAN DIMULAI DI SINI ---
 
-                  // 1. Buat daftar item dropdown secara manual
                   List<DropdownMenuItem<String>> dropdownItems =
                       categories.map((category) {
                         return DropdownMenuItem<String>(
@@ -166,7 +163,6 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                         );
                       }).toList();
 
-                  // 2. Tambahkan item spesial "Add New Category" di akhir daftar
                   dropdownItems.add(
                     DropdownMenuItem(
                       value:
@@ -192,7 +188,6 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     items:
                         dropdownItems, // Gunakan daftar yang sudah dimodifikasi
                     onChanged: (value) {
-                      // 3. Tambahkan logika untuk menangani item spesial
                       if (value == '--add-new-category--') {
                         Navigator.push(
                           context,
@@ -218,7 +213,6 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                         (value) =>
                             value == null ? 'Please select a category' : null,
                   );
-                  // --- PERUBAHAN SELESAI DI SINI ---
                 },
               ),
               const SizedBox(height: 16),
