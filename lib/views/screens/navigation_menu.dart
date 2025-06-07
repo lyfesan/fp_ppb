@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'expenses/expenses_screen.dart';
-import 'home_page.dart';
+import 'category_expense_screen.dart';
+import 'category_income_screen.dart';
 
 class NavigationMenu extends StatelessWidget {
   NavigationMenu({super.key});
   final NavigationController navController = Get.find();
 
   final List<Widget> screens = const [
-    HomePage(),
+    CategoryIncomeScreen(),
     ExpensesScreen(),
     Center(child: Text('Income')),
     Center(child: Text('Settings')),
@@ -17,19 +18,27 @@ class NavigationMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() => Scaffold(
-      body: screens[navController.selectedIndex.value],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navController.selectedIndex.value,
-        onDestinationSelected: navController.changeIndex,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: "Home"),
-          NavigationDestination(icon: Icon(Icons.speaker_notes_outlined), label: "Expenses"),
-          NavigationDestination(icon: Icon(Icons.sticky_note_2_outlined), label: "Income"),
-          NavigationDestination(icon: Icon(Icons.person), label: "Settings"),
-        ],
+    return Obx(
+      () => Scaffold(
+        body: screens[navController.selectedIndex.value],
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: navController.selectedIndex.value,
+          onDestinationSelected: navController.changeIndex,
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+            NavigationDestination(
+              icon: Icon(Icons.speaker_notes_outlined),
+              label: "Expenses",
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.sticky_note_2_outlined),
+              label: "Income",
+            ),
+            NavigationDestination(icon: Icon(Icons.person), label: "Settings"),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 

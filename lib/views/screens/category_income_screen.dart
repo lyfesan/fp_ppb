@@ -1,16 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import '../../services/firebase_auth_service.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class CategoryIncomeScreen extends StatefulWidget {
+  const CategoryIncomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<CategoryIncomeScreen> createState() => _CategoryIncomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _CategoryIncomeScreenState extends State<CategoryIncomeScreen> {
   final FirestoreService firestoreService = FirestoreService();
   final TextEditingController textController = TextEditingController();
 
@@ -44,9 +45,16 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pop(context);
 
                   if (docID == null) {
-                    firestoreService.addCategory(text);
+                    firestoreService.addCategoryIncome(
+                      FirebaseAuthService.currentUser!.uid,
+                      text,
+                    );
                   } else {
-                    firestoreService.updateCategory(docID, text);
+                    firestoreService.updateCategoryIncome(
+                      FirebaseAuthService.currentUser!.uid,
+                      docID,
+                      text,
+                    );
                   }
                   textController.clear();
                 },
@@ -64,7 +72,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Categories'),
+        title: Text('Income Categories'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -82,7 +90,9 @@ class _HomePageState extends State<HomePage> {
         onPressed: () => openCategoryBox(),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestoreService.getCategoriesStream(),
+        stream: firestoreService.getCategoriesIncomeStream(
+          FirebaseAuthService.currentUser!.uid,
+        ),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             final categoriesList = snapshot.data!.docs;
@@ -110,7 +120,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed: () => firestoreService.deleteCategory(docID),
+                        onPressed:
+                            () => firestoreService.deleteCategoryIncome(
+                              FirebaseAuthService.currentUser!.uid,
+                              docID,
+                            ),
                       ),
                     ],
                   ),
