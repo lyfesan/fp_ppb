@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../services/firebase_auth_service.dart';
 import 'login_screen.dart';
-import 'home_page.dart';
+import 'category_expense_screen.dart';
 import 'navigation_menu.dart';
 import 'package:get/get.dart';
 
@@ -18,9 +18,7 @@ class AuthGate extends StatelessWidget {
         // Handle loading state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
