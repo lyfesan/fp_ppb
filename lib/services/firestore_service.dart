@@ -12,10 +12,11 @@ class FirestoreService {
   // It's good practice to use the UID from Firebase Auth as the document ID
 
   final CollectionReference<Map<String, dynamic>> usersCollection =
-  FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('users');
 
-  final CollectionReference<Map<String, dynamic>> categories =
-  FirebaseFirestore.instance.collection('Category');
+  final CollectionReference<Map<String, dynamic>> categories = FirebaseFirestore
+      .instance
+      .collection('Category');
 
   CollectionReference get _expenses => _db.collection('expenses');
 
@@ -32,7 +33,8 @@ class FirestoreService {
         id: firebaseUser.uid,
         name: name,
         email: firebaseUser.email!,
-        photo: photoUrl ?? firebaseUser.photoURL, // Use provided or Auth photoURL
+        photo:
+            photoUrl ?? firebaseUser.photoURL, // Use provided or Auth photoURL
         createdAt: now, // Or firebaseUser.metadata.creationTime
         updatedAt: now,
       );
@@ -50,6 +52,7 @@ class FirestoreService {
       rethrow;
     }
   }
+
   /// Read App User
   Future<AppUser?> getAppUser(String uid) async {
     try {
@@ -67,14 +70,12 @@ class FirestoreService {
       return null;
     }
   }
+
   /// Update App User
   Future<void> updateAppUser(String uid, Map<String, dynamic> data) async {
     try {
       // Automatically add the 'updatedAt' field on every update
-      final updateData = {
-        ...data,
-        'updatedAt': Timestamp.now(),
-      };
+      final updateData = {...data, 'updatedAt': Timestamp.now()};
 
       await usersCollection.doc(uid).update(updateData);
       if (kDebugMode) {
@@ -103,23 +104,78 @@ class FirestoreService {
     }
   }
 
-  Future<void> addCategory(String name) {
-    return categories.add({'name': name, 'timestamp': Timestamp.now()});
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesStream() {
-    return categories.orderBy('timestamp', descending: true).snapshots();
-  }
-
-  Future<void> updateCategory(String docID, String newName) {
-    return categories.doc(docID).update({
-      'name': newName,
+  Future<void> addCategoryExpense(String userId, String name) {
+    return usersCollection.doc(userId).collection('ExpenseCategory').add({
+      'name': name,
       'timestamp': Timestamp.now(),
     });
   }
 
-  Future<void> deleteCategory(String docID) {
-    return categories.doc(docID).delete();
+  Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesExpenseStream(
+    String userId,
+  ) {
+    return usersCollection
+        .doc(userId)
+        .collection('ExpenseCategory')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Future<void> updateCategoryExpense(
+    String userId,
+    String docID,
+    String newName,
+  ) {
+    return usersCollection
+        .doc(userId)
+        .collection('ExpenseCategory')
+        .doc(docID)
+        .update({'name': newName, 'timestamp': Timestamp.now()});
+  }
+
+  Future<void> deleteCategoryExpense(String userId, String docID) {
+    return usersCollection
+        .doc(userId)
+        .collection('ExpenseCategory')
+        .doc(docID)
+        .delete();
+  }
+
+  Future<void> addCategoryIncome(String userId, String name) {
+    return usersCollection.doc(userId).collection('IncomeCategory').add({
+      'name': name,
+      'timestamp': Timestamp.now(),
+    });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesIncomeStream(
+    String userId,
+  ) {
+    return usersCollection
+        .doc(userId)
+        .collection('IncomeCategory')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Future<void> updateCategoryIncome(
+    String userId,
+    String docID,
+    String newName,
+  ) {
+    return usersCollection
+        .doc(userId)
+        .collection('IncomeCategory')
+        .doc(docID)
+        .update({'name': newName, 'timestamp': Timestamp.now()});
+  }
+
+  Future<void> deleteCategoryIncome(String userId, String docID) {
+    return usersCollection
+        .doc(userId)
+        .collection('IncomeCategory')
+        .doc(docID)
+        .delete();
   }
 
   // Add a new expense
@@ -128,10 +184,7 @@ class FirestoreService {
     required fb_auth.User user,
   }) async {
     try {
-      await _expenses.add({
-        ...expense.toMap(),
-        'userId': user.uid,
-      });
+      await _expenses.add({...expense.toMap(), 'userId': user.uid});
 
       if (kDebugMode) {
         print("Expense added for user ${user.uid}");
@@ -155,12 +208,16 @@ class FirestoreService {
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
         .snapshots()
-        .map((snapshot) =>
-        snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
+        );
   }
 
   Future<void> updateExpense({required Expense expense}) async {
-    final docRef = FirebaseFirestore.instance.collection('expenses').doc(expense.id);
+    final docRef = FirebaseFirestore.instance
+        .collection('expenses')
+        .doc(expense.id);
 
     final docSnapshot = await docRef.get();
     if (!docSnapshot.exists) throw Exception("Expense not found.");
@@ -173,8 +230,13 @@ class FirestoreService {
     await docRef.update(expense.toMap());
   }
 
-  Future<void> deleteExpense({required String expenseId, required String userId}) async {
-    final docRef = FirebaseFirestore.instance.collection('expenses').doc(expenseId);
+  Future<void> deleteExpense({
+    required String expenseId,
+    required String userId,
+  }) async {
+    final docRef = FirebaseFirestore.instance
+        .collection('expenses')
+        .doc(expenseId);
 
     final docSnapshot = await docRef.get();
     if (!docSnapshot.exists) throw Exception("Expense not found.");
@@ -185,5 +247,4 @@ class FirestoreService {
 
     await docRef.delete();
   }
-
 }
