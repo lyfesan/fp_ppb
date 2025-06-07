@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
+import 'package:fp_ppb/models/category.dart';
 
 import '../models/app_user.dart';
 import '../models/expense.dart';
@@ -176,6 +177,31 @@ class FirestoreService {
         .collection('IncomeCategory')
         .doc(docID)
         .delete();
+  }
+
+  Future<CategoryModel?> getExpenseCategoryById(
+    String userId,
+    String categoryId,
+  ) async {
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('ExpenseCategory')
+              .doc(categoryId)
+              .get();
+
+      if (doc.exists) {
+        // Gunakan factory constructor yang sudah kita buat sebelumnya
+        print("Category found: ${doc.data()}");
+        return CategoryModel.fromFirestore(doc);
+      }
+      return null; // Kembalikan null jika kategori tidak ditemukan (mungkin sudah dihapus)
+    } catch (e) {
+      print("Error getting category by ID: $e");
+      return null;
+    }
   }
 
   // Add a new expense
