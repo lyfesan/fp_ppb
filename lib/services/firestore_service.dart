@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../models/expense.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -15,6 +16,8 @@ class FirestoreService {
 
   final CollectionReference<Map<String, dynamic>> categories =
   FirebaseFirestore.instance.collection('Category');
+
+  CollectionReference get _expenses => _db.collection('expenses');
 
   /// Adds a new AppUser to Firestore.
   /// The document ID will be the Firebase Auth User's UID.
@@ -118,4 +121,69 @@ class FirestoreService {
   Future<void> deleteCategory(String docID) {
     return categories.doc(docID).delete();
   }
+
+  // Add a new expense
+  Future<void> addExpense({
+    required Expense expense,
+    required fb_auth.User user,
+  }) async {
+    try {
+      await _expenses.add({
+        ...expense.toMap(),
+        'userId': user.uid,
+      });
+
+      if (kDebugMode) {
+        print("Expense added for user ${user.uid}");
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error adding expense: $e");
+      }
+      rethrow;
+    }
+  }
+
+  // Get expenses for a specific user and date range
+  Stream<List<Expense>> getExpenses({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return _expenses
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) =>
+        snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList());
+  }
+
+  Future<void> updateExpense({required Expense expense}) async {
+    final docRef = FirebaseFirestore.instance.collection('expenses').doc(expense.id);
+
+    final docSnapshot = await docRef.get();
+    if (!docSnapshot.exists) throw Exception("Expense not found.");
+
+    final existingUserId = docSnapshot.data()?['userId'];
+    if (existingUserId != expense.userId) {
+      throw Exception("Unauthorized access to expense.");
+    }
+
+    await docRef.update(expense.toMap());
+  }
+
+  Future<void> deleteExpense({required String expenseId, required String userId}) async {
+    final docRef = FirebaseFirestore.instance.collection('expenses').doc(expenseId);
+
+    final docSnapshot = await docRef.get();
+    if (!docSnapshot.exists) throw Exception("Expense not found.");
+
+    if (docSnapshot.data()?['userId'] != userId) {
+      throw Exception("Unauthorized to delete this expense.");
+    }
+
+    await docRef.delete();
+  }
+
 }
