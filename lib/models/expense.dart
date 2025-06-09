@@ -1,10 +1,12 @@
+import 'dart:ffi';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Expense{
   final String id;
   final String name;
   final DateTime date;
-  final String amount;
+  final double amount;
   final String categoryId;
   final String userId;
 
@@ -45,7 +47,7 @@ class Expense{
   Expense copyWith({
     String? id,
     String? name,
-    String? amount,
+    double? amount,
     String? categoryId,
     DateTime? date,
     String? userId,
