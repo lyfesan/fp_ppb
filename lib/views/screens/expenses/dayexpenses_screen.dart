@@ -1,14 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fp_ppb/models/category.dart';
-import 'package:fp_ppb/services/firebase_auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../models/expense.dart';
+import '../../../services/firebase_auth_service.dart';
 import '../../../services/firestore_service.dart';
 import 'add_expenses_screen.dart';
 import 'edit_expenses_screen.dart';
+import 'package:fp_ppb/models/category.dart'; // Your category model
 
 class DayExpensesScreen extends StatelessWidget {
   final DateTime date;
@@ -23,16 +22,7 @@ class DayExpensesScreen extends StatelessWidget {
     final end = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     return Scaffold(
-      appBar: AppBar(title: Text(DateFormat.yMMMMd().format(date))),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => AddExpenseScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      appBar: AppBar(title: const Text('Expenses Detail')),
       body: StreamBuilder<List<Expense>>(
         stream: firestoreService.getExpenses(
           userId: FirebaseAuth.instance.currentUser!.uid,
@@ -48,56 +38,34 @@ class DayExpensesScreen extends StatelessWidget {
             return const Center(child: Text('No expenses for this day.'));
           }
 
-          return ListView.builder(
-            itemCount: expenses.length,
-            itemBuilder: (context, index) {
-              final e = expenses[index];
-              return ListTile(
-                title: Text(e.name),
-                subtitle: FutureBuilder<CategoryModel?>(
-                  // Tipe data sesuai dengan yang dikembalikan oleh Future Anda
-                  // 1. Tentukan Future yang akan "didengarkan"
-                  future: firestoreService.getExpenseCategoryById(
-                    FirebaseAuthService.currentUser!.uid,
-                    e.categoryId,
-                  ), // Mari kita asumsikan fungsinya disederhanakan
-                  // 2. Builder akan membangun UI berdasarkan status Future
-                  builder: (context, snapshot) {
-                    // Saat data masih dimuat dari Firestore
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text('Category: Loading...');
-                    }
+          // Calculate total
+          final totalAmount = expenses.fold<double>(
+            0,
+                (sum, e) => sum + e.amount,
+          );
 
-                    // Jika terjadi error saat memuat data
-                    if (snapshot.hasError) {
-                      return const Text(
-                        'Category: Error',
-                        style: TextStyle(color: Colors.red),
-                      );
-                    }
-
-                    // Jika data berhasil dimuat dan tidak kosong
-                    if (snapshot.hasData && snapshot.data != null) {
-                      // Tampilkan nama kategori dari hasil snapshot
-                      return Text(
-                        'Category: ${snapshot.data!.name}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      );
-                    }
-
-                    // Jika kategori tidak ditemukan atau kasus lainnya
-                    return const Text(
-                      'Category : Unknown',
-                      style: TextStyle(fontStyle: FontStyle.italic),
-                    );
-                  },
+          return Column(
+            children: [
+              // Date display above list
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  DateFormat('EEEE, dd MMMM yyyy').format(date),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () {
+              ),
+
+              Expanded(
+                child: ListView.builder(
+                  itemCount: expenses.length,
+                  itemBuilder: (context, index) {
+                    final e = expenses[index];
+                    return GestureDetector(
+                      onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -105,26 +73,149 @@ class DayExpensesScreen extends StatelessWidget {
                           ),
                         );
                       },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () async {
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user == null) return;
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Left part: icon + name + category
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.receipt_long,
+                                          color: Colors.grey[700]),
+                                      const SizedBox(width: 12),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              e.name,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: Colors.grey[800],
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            FutureBuilder<CategoryModel?>(
+                                              future: firestoreService
+                                                  .getExpenseCategoryById(
+                                                FirebaseAuthService
+                                                    .currentUser!.uid,
+                                                e.categoryId,
+                                              ),
+                                              builder: (context, catSnapshot) {
+                                                if (catSnapshot
+                                                    .connectionState ==
+                                                    ConnectionState.waiting) {
+                                                  return Text(
+                                                    'Category: Loading...',
+                                                    style: TextStyle(
+                                                        color: Colors.grey[600]),
+                                                  );
+                                                }
+                                                if (catSnapshot.hasError ||
+                                                    !catSnapshot.hasData) {
+                                                  return Text(
+                                                    'Category: Unknown',
+                                                    style: TextStyle(
+                                                        fontStyle:
+                                                        FontStyle.italic,
+                                                        color:
+                                                        Colors.grey[600]),
+                                                  );
+                                                }
 
-                        await firestoreService.deleteExpense(
-                          expenseId: e.id,
-                          userId: user.uid,
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Expense deleted')),
-                        );
-                      },
+                                                return Text(
+                                                  'Category: ${catSnapshot.data!.name}',
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w500,
+                                                      color: Colors.grey[700]),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Right part: amount and arrow
+                                Row(
+                                  children: [
+                                    Text(
+                                      NumberFormat.currency(
+                                        locale: 'id_ID',
+                                        symbol: 'Rp ',
+                                        decimalDigits: 0,
+                                      ).format(e.amount),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.grey[800],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.chevron_right,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Divider and total
+              Divider(thickness: 1, color: Colors.grey[400]),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        locale: 'id_ID',
+                        symbol: 'Rp ',
+                        decimalDigits: 0,
+                      ).format(totalAmount),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[900],
+                      ),
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),

@@ -5,21 +5,26 @@ import 'package:fp_ppb/models/category.dart';
 
 import '../models/app_user.dart';
 import '../models/expense.dart';
+import '../models/income.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-
   // Collection reference for users
   // It's good practice to use the UID from Firebase Auth as the document ID
 
   final CollectionReference<Map<String, dynamic>> usersCollection =
-      FirebaseFirestore.instance.collection('users');
+  FirebaseFirestore.instance.collection('users');
 
   final CollectionReference<Map<String, dynamic>> categories = FirebaseFirestore
       .instance
       .collection('Category');
 
-  CollectionReference get _expenses => _db.collection('expenses');
+  final CollectionReference<Map<String, dynamic>> expenses = FirebaseFirestore
+      .instance
+      .collection('expenses');
+
+  final CollectionReference<Map<String, dynamic>> income = FirebaseFirestore
+      .instance
+      .collection('incomes');
 
   /// Adds a new AppUser to Firestore.
   /// The document ID will be the Firebase Auth User's UID.
@@ -34,9 +39,10 @@ class FirestoreService {
         id: firebaseUser.uid,
         name: name,
         email: firebaseUser.email!,
-        photo:
-            photoUrl ?? firebaseUser.photoURL, // Use provided or Auth photoURL
-        createdAt: now, // Or firebaseUser.metadata.creationTime
+        photo: photoUrl ?? firebaseUser.photoURL,
+        // Use provided or Auth photoURL
+        createdAt: now,
+        // Or firebaseUser.metadata.creationTime
         updatedAt: now,
       );
 
@@ -105,16 +111,21 @@ class FirestoreService {
     }
   }
 
-  Future<void> addCategoryExpense(String userId, String name) {
-    return usersCollection.doc(userId).collection('ExpenseCategory').add({
+  Future<String> addCategoryExpense(String userId, String name) async {
+    final docRef = await usersCollection
+        .doc(userId)
+        .collection('ExpenseCategory')
+        .add({
       'name': name,
       'timestamp': Timestamp.now(),
     });
+
+    return docRef.id; // return the newly created doc's ID
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesExpenseStream(
-    String userId,
-  ) {
+      String userId,
+      ) {
     return usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
@@ -123,10 +134,10 @@ class FirestoreService {
   }
 
   Future<void> updateCategoryExpense(
-    String userId,
-    String docID,
-    String newName,
-  ) {
+      String userId,
+      String docID,
+      String newName,
+      ) {
     return usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
@@ -150,8 +161,8 @@ class FirestoreService {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesIncomeStream(
-    String userId,
-  ) {
+      String userId,
+      ) {
     return usersCollection
         .doc(userId)
         .collection('IncomeCategory')
@@ -160,10 +171,10 @@ class FirestoreService {
   }
 
   Future<void> updateCategoryIncome(
-    String userId,
-    String docID,
-    String newName,
-  ) {
+      String userId,
+      String docID,
+      String newName,
+      ) {
     return usersCollection
         .doc(userId)
         .collection('IncomeCategory')
@@ -180,17 +191,17 @@ class FirestoreService {
   }
 
   Future<CategoryModel?> getExpenseCategoryById(
-    String userId,
-    String categoryId,
-  ) async {
+      String userId,
+      String categoryId,
+      ) async {
     try {
       final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userId)
-              .collection('ExpenseCategory')
-              .doc(categoryId)
-              .get();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('ExpenseCategory')
+          .doc(categoryId)
+          .get();
 
       if (doc.exists) {
         // Gunakan factory constructor yang sudah kita buat sebelumnya
@@ -210,7 +221,7 @@ class FirestoreService {
     required fb_auth.User user,
   }) async {
     try {
-      await _expenses.add({...expense.toMap(), 'userId': user.uid});
+      await expenses.add({...expense.toMap(), 'userId': user.uid});
 
       if (kDebugMode) {
         print("Expense added for user ${user.uid}");
@@ -229,15 +240,15 @@ class FirestoreService {
     required DateTime startDate,
     required DateTime endDate,
   }) {
-    return _expenses
+    return expenses
         .where('userId', isEqualTo: userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
         .snapshots()
         .map(
           (snapshot) =>
-              snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
-        );
+          snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
+    );
   }
 
   Future<void> updateExpense({required Expense expense}) async {
@@ -269,6 +280,68 @@ class FirestoreService {
 
     if (docSnapshot.data()?['userId'] != userId) {
       throw Exception("Unauthorized to delete this expense.");
+    }
+
+    await docRef.delete();
+  }
+
+  // Add income
+  Future<void> addIncome({
+    required Income incomeData,
+    required fb_auth.User user,
+  }) async {
+    try {
+      await income.add({...incomeData.toMap(), 'userId': user.uid});
+      if (kDebugMode) print("Income added for user ${user.uid}");
+    } catch (e) {
+      if (kDebugMode) print("Error adding income: $e");
+      rethrow;
+    }
+  }
+
+// Get incomes for user in a date range
+  Stream<List<Income>> getIncome({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return income
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map(
+          (snapshot) =>
+          snapshot.docs.map((doc) => Income.fromFirestore(doc)).toList(),
+    );
+  }
+
+// Update income
+  Future<void> updateIncome({required Income incomeData}) async {
+    final docRef = income.doc(incomeData.id);
+    final docSnapshot = await docRef.get();
+
+    if (!docSnapshot.exists) throw Exception("Income not found.");
+
+    final existingUserId = docSnapshot.data()?['userId'];
+    if (existingUserId != incomeData.userId) {
+      throw Exception("Unauthorized access to income.");
+    }
+
+    await docRef.update(incomeData.toMap());
+  }
+
+// Delete income
+  Future<void> deleteIncome({
+    required String incomeId,
+    required String userId,
+  }) async {
+    final docRef = income.doc(incomeId);
+    final docSnapshot = await docRef.get();
+
+    if (!docSnapshot.exists) throw Exception("Income not found.");
+    if (docSnapshot.data()?['userId'] != userId) {
+      throw Exception("Unauthorized to delete this income.");
     }
 
     await docRef.delete();
