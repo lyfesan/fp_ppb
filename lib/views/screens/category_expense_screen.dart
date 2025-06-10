@@ -72,7 +72,7 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Categories'),
+        title: Text('Expense Categories'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -120,11 +120,112 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed:
-                            () => firestoreService.deleteCategoryExpense(
-                              FirebaseAuthService.currentUser!.uid,
-                              docID,
-                            ),
+                        onPressed: () async {
+                          final expenses = await firestoreService
+                              .checkCategoryExpense(
+                                FirebaseAuthService.currentUser!.uid,
+                                docID,
+                              );
+
+                          if (expenses.isNotEmpty) {
+                            // Show a dialog to inform the user that the category cannot be deleted
+                            showDialog(
+                              context: context,
+                              builder:
+                                  (context) => AlertDialog(
+                                    title: Text(
+                                      'Cannot Delete Category',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'The following expenses are linked to this category:',
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                        SizedBox(height: 8),
+                                        SizedBox(
+                                          height:
+                                              200, // Adjust the height as needed
+                                          width:
+                                              300, // Adjust the width as needed
+                                          child: ListView.builder(
+                                            itemCount: expenses.length,
+                                            itemBuilder: (context, index) {
+                                              final expense = expenses[index];
+                                              return Text(
+                                                '${index + 1}. ${expense.name}',
+                                                style: TextStyle(fontSize: 14),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                          } else {
+                            showDialog(
+                              context: context,
+                              builder:
+                                  (context) => AlertDialog(
+                                    title: Text('Confirm Delete'),
+                                    content: Text(
+                                      'Are you sure you want to delete this category?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          Navigator.pop(
+                                            context,
+                                          ); // Close the confirmation dialog
+                                          try {
+                                            await firestoreService
+                                                .deleteCategoryExpense(
+                                                  FirebaseAuthService
+                                                      .currentUser!
+                                                      .uid,
+                                                  docID,
+                                                );
+                                            // Category deleted successfully
+                                            // Show a success message
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Category deleted successfully!',
+                                                ),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            // Handle other potential errors
+                                            print(
+                                              'Error deleting category: $e',
+                                            );
+                                          }
+                                        },
+                                        child: Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                          }
+                        },
                       ),
                     ],
                   ),

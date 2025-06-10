@@ -12,7 +12,7 @@ class FirestoreService {
   // It's good practice to use the UID from Firebase Auth as the document ID
 
   final CollectionReference<Map<String, dynamic>> usersCollection =
-  FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('users');
 
   final CollectionReference<Map<String, dynamic>> categories = FirebaseFirestore
       .instance
@@ -115,17 +115,14 @@ class FirestoreService {
     final docRef = await usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
-        .add({
-      'name': name,
-      'timestamp': Timestamp.now(),
-    });
+        .add({'name': name, 'timestamp': Timestamp.now()});
 
     return docRef.id; // return the newly created doc's ID
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesExpenseStream(
-      String userId,
-      ) {
+    String userId,
+  ) {
     return usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
@@ -134,10 +131,10 @@ class FirestoreService {
   }
 
   Future<void> updateCategoryExpense(
-      String userId,
-      String docID,
-      String newName,
-      ) {
+    String userId,
+    String docID,
+    String newName,
+  ) {
     return usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
@@ -145,24 +142,72 @@ class FirestoreService {
         .update({'name': newName, 'timestamp': Timestamp.now()});
   }
 
-  Future<void> deleteCategoryExpense(String userId, String docID) {
-    return usersCollection
+  Future<List<Expense>> checkCategoryExpense(
+    String userId,
+    String docID,
+  ) async {
+    // Check if there are any expenses associated with this category
+    final expensesQuery =
+        await FirebaseFirestore.instance
+            .collection('expenses')
+            .where('categoryId', isEqualTo: docID)
+            .get();
+
+    List<Expense> expensesList = [];
+    for (var doc in expensesQuery.docs) {
+      try {
+        expensesList.add(Expense.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Expense object: $e');
+        // Handle the error, e.g., by logging it or skipping the document
+      }
+    }
+
+    return expensesList;
+  }
+
+  Future<List<Expense>> checkCategoryIncome(String userId, String docID) async {
+    // Check if there are any expenses associated with this category
+    final expensesQuery =
+        await FirebaseFirestore.instance
+            .collection('incomes')
+            .where('categoryId', isEqualTo: docID)
+            .get();
+
+    List<Expense> expensesList = [];
+    for (var doc in expensesQuery.docs) {
+      try {
+        expensesList.add(Expense.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Expense object: $e');
+        // Handle the error, e.g., by logging it or skipping the document
+      }
+    }
+
+    return expensesList;
+  }
+
+  Future<void> deleteCategoryExpense(String userId, String docID) async {
+    // If there are no expenses, proceed with deletion
+    await usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
         .doc(docID)
         .delete();
   }
 
-  Future<void> addCategoryIncome(String userId, String name) {
-    return usersCollection.doc(userId).collection('IncomeCategory').add({
-      'name': name,
-      'timestamp': Timestamp.now(),
-    });
+  Future<String> addCategoryIncome(String userId, String name) async {
+    final docRef = await usersCollection
+        .doc(userId)
+        .collection('IncomeCategory')
+        .add({'name': name, 'timestamp': Timestamp.now()});
+
+    return docRef.id;
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesIncomeStream(
-      String userId,
-      ) {
+    String userId,
+  ) {
     return usersCollection
         .doc(userId)
         .collection('IncomeCategory')
@@ -171,10 +216,10 @@ class FirestoreService {
   }
 
   Future<void> updateCategoryIncome(
-      String userId,
-      String docID,
-      String newName,
-      ) {
+    String userId,
+    String docID,
+    String newName,
+  ) {
     return usersCollection
         .doc(userId)
         .collection('IncomeCategory')
@@ -191,17 +236,42 @@ class FirestoreService {
   }
 
   Future<CategoryModel?> getExpenseCategoryById(
-      String userId,
-      String categoryId,
-      ) async {
+    String userId,
+    String categoryId,
+  ) async {
     try {
       final doc =
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('ExpenseCategory')
-          .doc(categoryId)
-          .get();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('ExpenseCategory')
+              .doc(categoryId)
+              .get();
+
+      if (doc.exists) {
+        // Gunakan factory constructor yang sudah kita buat sebelumnya
+        print("Category found: ${doc.data()}");
+        return CategoryModel.fromFirestore(doc);
+      }
+      return null; // Kembalikan null jika kategori tidak ditemukan (mungkin sudah dihapus)
+    } catch (e) {
+      print("Error getting category by ID: $e");
+      return null;
+    }
+  }
+
+  Future<CategoryModel?> getIncomeCategoryById(
+    String userId,
+    String categoryId,
+  ) async {
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('IncomeCategory')
+              .doc(categoryId)
+              .get();
 
       if (doc.exists) {
         // Gunakan factory constructor yang sudah kita buat sebelumnya
@@ -247,8 +317,8 @@ class FirestoreService {
         .snapshots()
         .map(
           (snapshot) =>
-          snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
-    );
+              snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
+        );
   }
 
   Future<void> updateExpense({required Expense expense}) async {
@@ -299,7 +369,7 @@ class FirestoreService {
     }
   }
 
-// Get incomes for user in a date range
+  // Get incomes for user in a date range
   Stream<List<Income>> getIncome({
     required String userId,
     required DateTime startDate,
@@ -312,11 +382,11 @@ class FirestoreService {
         .snapshots()
         .map(
           (snapshot) =>
-          snapshot.docs.map((doc) => Income.fromFirestore(doc)).toList(),
-    );
+              snapshot.docs.map((doc) => Income.fromFirestore(doc)).toList(),
+        );
   }
 
-// Update income
+  // Update income
   Future<void> updateIncome({required Income incomeData}) async {
     final docRef = income.doc(incomeData.id);
     final docSnapshot = await docRef.get();
@@ -331,7 +401,7 @@ class FirestoreService {
     await docRef.update(incomeData.toMap());
   }
 
-// Delete income
+  // Delete income
   Future<void> deleteIncome({
     required String incomeId,
     required String userId,
@@ -345,5 +415,75 @@ class FirestoreService {
     }
 
     await docRef.delete();
+  }
+
+  Stream<List<Map<String, dynamic>>> getExpensesByCategory({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return expenses
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+          Map<String, double> categoryTotals = {};
+          for (var doc in snapshot.docs) {
+            Expense expense = Expense.fromFirestore(doc);
+            if (categoryTotals.containsKey(expense.categoryId)) {
+              categoryTotals[expense.categoryId!] =
+                  categoryTotals[expense.categoryId!]! + expense.amount;
+            } else {
+              categoryTotals[expense.categoryId!] = expense.amount;
+            }
+          }
+
+          List<Map<String, dynamic>> result =
+              categoryTotals.entries
+                  .map(
+                    (entry) => {'categoryId': entry.key, 'total': entry.value},
+                  )
+                  .toList();
+
+          result.sort((a, b) => b['total'].compareTo(a['total']));
+
+          return result;
+        });
+  }
+
+  Stream<List<Map<String, dynamic>>> getIncomesByCategory({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return income
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+          Map<String, double> categoryTotals = {};
+          for (var doc in snapshot.docs) {
+            Income income = Income.fromFirestore(doc);
+            if (categoryTotals.containsKey(income.categoryId)) {
+              categoryTotals[income.categoryId!] =
+                  categoryTotals[income.categoryId!]! + income.amount;
+            } else {
+              categoryTotals[income.categoryId!] = income.amount;
+            }
+          }
+
+          List<Map<String, dynamic>> result =
+              categoryTotals.entries
+                  .map(
+                    (entry) => {'categoryId': entry.key, 'total': entry.value},
+                  )
+                  .toList();
+
+          result.sort((a, b) => b['total'].compareTo(a['total']));
+
+          return result;
+        });
   }
 }
