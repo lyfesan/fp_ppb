@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
-import 'package:fp_ppb/views/screens/category_expense_screen.dart';
+import 'package:fp_ppb/views/screens/category/category_expense_screen.dart';
 
 import '../../../models/expense.dart';
 import '../../../models/category.dart';

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
 import 'package:fp_ppb/models/category.dart';
-
+import 'package:fp_ppb/core/constants/predefined_data.dart';
 import '../models/app_user.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
@@ -10,7 +10,8 @@ import '../models/income.dart';
 class FirestoreService {
   // Collection reference for users
   // It's good practice to use the UID from Firebase Auth as the document ID
-
+  List<String> initIncomeCategories = PredefinedData.incomeCategories;
+  List<String> initExpenseCategories = PredefinedData.expenseCategories;
   final CollectionReference<Map<String, dynamic>> usersCollection =
       FirebaseFirestore.instance.collection('users');
 
@@ -48,6 +49,14 @@ class FirestoreService {
 
       // Set the document in 'users' collection with UID as document ID
       await usersCollection.doc(firebaseUser.uid).set(newUser.toJson());
+
+      for(String item in initIncomeCategories) {
+        addCategoryIncome(newUser.id, item);
+      }
+      for(String item in initExpenseCategories) {
+        addCategoryExpense(newUser.id, item);
+      }
+
       if (kDebugMode) {
         print('AppUser created in Firestore with ID: ${firebaseUser.uid}');
       }
@@ -75,6 +84,33 @@ class FirestoreService {
         print('Error getting AppUser: $e');
       }
       return null;
+    }
+  }
+
+  Future<bool> isEmailAlreadyInUse(String email, String currentUserId) async {
+    try {
+      // Query the users collection for documents with the given email
+      final querySnapshot = await usersCollection
+          .where('email', isEqualTo: email)
+          .limit(1) // We only need to know if at least one exists
+          .get();
+
+      // If no documents are found, the email is not in use.
+      if (querySnapshot.docs.isEmpty) {
+        return false;
+      }
+
+      // If a document is found, check if it belongs to the current user.
+      // If the document ID is the same as the current user's ID,
+      // it means the user is not changing their email, which is fine.
+      final docId = querySnapshot.docs.first.id;
+      return docId != currentUserId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking email: $e');
+      }
+      // In case of an error, assume the worst to prevent duplicates
+      return true;
     }
   }
 

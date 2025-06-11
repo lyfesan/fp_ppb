@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fp_ppb/views/screens/profile/profile_page.dart';
 import 'package:get/get.dart';
 
 import 'expenses/expenses_screen.dart';
-import 'category_expense_screen.dart';
-import 'category_income_screen.dart';
+import 'category/category_expense_screen.dart';
+import 'category/category_income_screen.dart';
 import 'income/incomes_screen.dart';
 import 'home_screen.dart';
 
@@ -18,7 +19,8 @@ class NavigationMenu extends StatelessWidget {
     IncomesScreen(),
     // Center(child: Text('Income')),
     // Center(child: Text('Settings')),
-    CategoryIncomeScreen(),
+    //CategoryIncomeScreen(),
+    ProfilePage(),
     // CategoryExpenseScreen(),
   ];
 
@@ -40,7 +42,7 @@ class NavigationMenu extends StatelessWidget {
               icon: Icon(Icons.sticky_note_2_outlined),
               label: "Income",
             ),
-            NavigationDestination(icon: Icon(Icons.person), label: "Settings"),
+            NavigationDestination(icon: Icon(Icons.person), label: "Profile"),
           ],
         ),
       ),

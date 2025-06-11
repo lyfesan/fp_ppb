@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../../models/app_user.dart';
 import '../../services/firestore_service.dart';
 import '../../models/category.dart';
+import 'navigation_menu.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NavigationController navController = Get.find();
 
   double income = 0.0;
   double expenses = 0.0;
@@ -32,13 +36,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = _auth.currentUser;
     if (user == null) return null;
 
-    final userDoc =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+    // final userDoc = FirestoreService().getAppUser(user.uid);
+    //     // await FirebaseFirestore.instance
+    //     //     .collection('users')
+    //     //     .doc(user.uid)
+    //     //     .get();
+    //
+    // return userDoc.exists ? userDoc['name'] : null;
 
-    return userDoc.exists ? userDoc['name'] : null;
+    try {
+      final AppUser? appUser = await FirestoreService().getAppUser(user.uid);
+      return appUser?.name;
+    } catch (e) {
+      print("Error fetching user name: $e");
+      return null;
+    }
   }
 
   Future<void> fetchBalanceData() async {
@@ -152,9 +164,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         return Row(
                           children: [
                             // Circle Avatar for User Profile
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.grey[200],
+                            InkWell(
+                              onTap: () => navController.changeIndex(3),
+                              child: CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                child: Icon(Icons.person,size: 30),
+                              ),
                             ),
                             const SizedBox(width: 16),
                             // Greeting Message
