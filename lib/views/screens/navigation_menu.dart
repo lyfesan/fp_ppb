@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'expenses/expenses_screen.dart';
 import 'category_expense_screen.dart';
 import 'category_income_screen.dart';
+import 'income/incomes_screen.dart';
 import 'home_screen.dart';
 
 class NavigationMenu extends StatelessWidget {
@@ -14,14 +15,17 @@ class NavigationMenu extends StatelessWidget {
     HomeScreen(),
     ExpensesScreen(),
     // CategoryExpenseScreen(),
-    Center(child: Text('Income')),
-    Center(child: Text('Settings')),
+    IncomesScreen(),
+    // Center(child: Text('Income')),
+    // Center(child: Text('Settings')),
+    CategoryIncomeScreen(),
+    // CategoryExpenseScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Obx(
-          () => Scaffold(
+      () => Scaffold(
         body: screens[navController.selectedIndex.value],
         bottomNavigationBar: NavigationBar(
           selectedIndex: navController.selectedIndex.value,

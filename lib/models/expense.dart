@@ -2,7 +2,7 @@ import 'dart:ffi';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Expense{
+class Expense {
   final String id;
   final String name;
   final DateTime date;
