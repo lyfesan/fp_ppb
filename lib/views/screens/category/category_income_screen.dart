@@ -2,16 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 import 'package:flutter/material.dart';
-import '../../services/firebase_auth_service.dart';
+import '../../../services/firebase_auth_service.dart';
 
-class CategoryExpenseScreen extends StatefulWidget {
-  const CategoryExpenseScreen({super.key});
+class CategoryIncomeScreen extends StatefulWidget {
+  const CategoryIncomeScreen({super.key});
 
   @override
-  State<CategoryExpenseScreen> createState() => _CategoryExpenseScreenState();
+  State<CategoryIncomeScreen> createState() => _CategoryIncomeScreenState();
 }
 
-class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
+class _CategoryIncomeScreenState extends State<CategoryIncomeScreen> {
   final FirestoreService firestoreService = FirestoreService();
   final TextEditingController textController = TextEditingController();
 
@@ -45,12 +45,12 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
                   Navigator.pop(context);
 
                   if (docID == null) {
-                    firestoreService.addCategoryExpense(
+                    firestoreService.addCategoryIncome(
                       FirebaseAuthService.currentUser!.uid,
                       text,
                     );
                   } else {
-                    firestoreService.updateCategoryExpense(
+                    firestoreService.updateCategoryIncome(
                       FirebaseAuthService.currentUser!.uid,
                       docID,
                       text,
@@ -72,7 +72,7 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Expense Categories'),
+        title: Text('Income Categories'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -90,7 +90,7 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
         onPressed: () => openCategoryBox(),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestoreService.getCategoriesExpenseStream(
+        stream: firestoreService.getCategoriesIncomeStream(
           FirebaseAuthService.currentUser!.uid,
         ),
         builder: (context, snapshot) {
@@ -122,7 +122,7 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
                         icon: Icon(Icons.delete),
                         onPressed: () async {
                           final expenses = await firestoreService
-                              .checkCategoryExpense(
+                              .checkCategoryIncome(
                                 FirebaseAuthService.currentUser!.uid,
                                 docID,
                               );
@@ -195,7 +195,7 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
                                           ); // Close the confirmation dialog
                                           try {
                                             await firestoreService
-                                                .deleteCategoryExpense(
+                                                .deleteCategoryIncome(
                                                   FirebaseAuthService
                                                       .currentUser!
                                                       .uid,
