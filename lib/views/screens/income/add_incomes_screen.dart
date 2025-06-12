@@ -1,69 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fp_ppb/models/category.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
-import 'package:fp_ppb/views/screens/category/category_expense_screen.dart';
+import 'package:fp_ppb/views/screens/category/category_income_screen.dart';
 
 import '../../../models/account.dart';
-import '../../../models/expense.dart';
+import '../../../models/income.dart';
+import '../../../models/category.dart';
 import '../../../services/firestore_service.dart';
 
-class EditExpenseScreen extends StatefulWidget {
-  final Expense expense;
-
-  const EditExpenseScreen({super.key, required this.expense});
+class AddIncomeScreen extends StatefulWidget {
+  const AddIncomeScreen({super.key});
 
   @override
-  State<EditExpenseScreen> createState() => _EditExpenseScreenState();
+  State<AddIncomeScreen> createState() => _AddIncomeScreenState();
 }
 
-class _EditExpenseScreenState extends State<EditExpenseScreen> {
+class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _amountController;
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
   final _newCategoryController = TextEditingController();
 
   String? _selectedCategoryId;
   String? _selectedAccountId;
   bool _isAddingNewCategory = false;
-  late DateTime _selectedDate;
-
+  DateTime _selectedDate = DateTime.now();
   final FirestoreService firestoreService = FirestoreService();
+
   bool _isSaving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.expense.name);
-    // Format amount as string with dots:
-    _amountController = TextEditingController(text: formatWithDots(widget.expense.amount.toInt().toString()));
-    _selectedCategoryId = widget.expense.categoryId;
-    _selectedAccountId = widget.expense.accountId;
-    _selectedDate = widget.expense.date;
-  }
-
-  String formatWithDots(String input) {
-    // Remove non-digit chars (like existing dots)
-    String digitsOnly = input.replaceAll(RegExp(r'[^\d]'), '');
-
-    StringBuffer buffer = StringBuffer();
-    int len = digitsOnly.length;
-
-    for (int i = 0; i < len; i++) {
-      buffer.write(digitsOnly[i]);
-
-      int posFromRight = len - i - 1;
-      if (posFromRight > 0 && posFromRight % 3 == 0) {
-        buffer.write('.');
-      }
-    }
-
-    return buffer.toString();
-  }
-
-  Future<void> _updateExpense() async {
+  Future<void> _saveIncome() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -74,7 +43,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("No user logged in.");
 
-      // If adding new category inline, add it first
+      // If user is adding a new category inline, add it first
       if (_isAddingNewCategory) {
         final newCategoryName = _newCategoryController.text.trim();
         if (newCategoryName.isEmpty) {
@@ -86,10 +55,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           });
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryExpense(
+
+        // Add new category and get the ID
+        final newCategoryId = await firestoreService.addCategoryIncome(
           user.uid,
           newCategoryName,
         );
+
         _selectedCategoryId = newCategoryId;
         _isAddingNewCategory = false;
         _newCategoryController.clear();
@@ -108,27 +80,32 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       final cleanedAmount = _amountController.text.replaceAll('.', '').trim();
       final amount = double.parse(cleanedAmount);
 
-      final updatedExpense = widget.expense.copyWith(
+      final newIncome = Income(
+        id: '', // Firestore will auto-generate ID
         name: _nameController.text.trim(),
         amount: amount,
-        accountId: _selectedAccountId,
-        categoryId: _selectedCategoryId,
+        accountId: _selectedAccountId!,
+        categoryId: _selectedCategoryId!,
         date: _selectedDate,
+        userId: user.uid,
       );
 
-      await firestoreService.updateExpense(expense: updatedExpense);
+      await firestoreService.addIncome(incomeData: newIncome, user: user);
 
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update expense: $e')),
-      );
-    } finally {
       if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
+        Navigator.pop(context);
       }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to save income: $e');
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save income: $e')));
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
     }
   }
 
@@ -147,34 +124,50 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     }
   }
 
+  String formatWithDots(String input) {
+    // Remove non-digit chars (like existing dots)
+    String digitsOnly = input.replaceAll(RegExp(r'[^\d]'), '');
+
+    StringBuffer buffer = StringBuffer();
+    int len = digitsOnly.length;
+
+    for (int i = 0; i < len; i++) {
+      buffer.write(digitsOnly[i]);
+
+      // Add dot if this is not the last digit and position from right is multiple of 3
+      int posFromRight = len - i - 1;
+      if (posFromRight > 0 && posFromRight % 3 == 0) {
+        buffer.write('.');
+      }
+    }
+
+    return buffer.toString();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
-    _newCategoryController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Expense')),
+      appBar: AppBar(title: const Text('Add Income')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              // Name field
+              // Income Name
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Expense Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    'Income Name',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -182,23 +175,23 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter a name' : null,
+                    validator:
+                        (value) =>
+                            value == null || value.isEmpty
+                                ? 'Enter a name'
+                                : null,
                   ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              // Amount field with formatting
+              // Amount
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Amount',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -208,9 +201,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       border: OutlineInputBorder(),
                       prefixText: 'Rp ',
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (value) {
                       final cleaned = value?.replaceAll('.', '') ?? '';
                       final parsed = double.tryParse(cleaned);
@@ -224,14 +215,19 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       if (formatted != value) {
                         _amountController.value = TextEditingValue(
                           text: formatted,
-                          selection: TextSelection.collapsed(offset: formatted.length),
+                          selection: TextSelection.collapsed(
+                            offset: formatted.length,
+                          ),
                         );
                       }
                     },
                   ),
                 ],
               ),
+
               const SizedBox(height: 16),
+
+              // Account dropdown
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -293,20 +289,19 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ],
               ),
 
-              // Category dropdown with inline add new category
+              const SizedBox(height: 16),
+
+              // Category dropdown
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Category',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   StreamBuilder<QuerySnapshot>(
-                    stream: firestoreService.getCategoriesExpenseStream(
+                    stream: firestoreService.getCategoriesIncomeStream(
                       FirebaseAuthService.currentUser!.uid,
                     ),
                     builder: (context, snapshot) {
@@ -317,26 +312,25 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                         return const Text('Error loading categories');
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No categories found.');
-                      }
-
-                      final categories = snapshot.data!.docs
-                          .map((doc) => CategoryModel.fromFirestore(doc))
-                          .toList();
-
-                      // Reset category selection if current selection is deleted
-                      final categoryIds = categories.map((c) => c.id).toList();
-                      if (!categoryIds.contains(_selectedCategoryId)) {
-                        _selectedCategoryId = null;
-                      }
-
-                      List<DropdownMenuItem<String>> dropdownItems =
-                      categories.map((category) {
-                        return DropdownMenuItem<String>(
-                          value: category.id,
-                          child: Text(category.name),
+                        return const Text(
+                          'No categories found. Please add one first.',
                         );
-                      }).toList();
+                      }
+
+                      final categories =
+                          snapshot.data!.docs
+                              .map((doc) => CategoryModel.fromFirestore(doc))
+                              .toList();
+
+                      final dropdownItems =
+                          categories
+                              .map(
+                                (category) => DropdownMenuItem<String>(
+                                  value: category.id,
+                                  child: Text(category.name),
+                                ),
+                              )
+                              .toList();
 
                       dropdownItems.add(
                         DropdownMenuItem(
@@ -368,8 +362,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                             });
                           } else {
                             setState(() {
-                              _isAddingNewCategory = false;
                               _selectedCategoryId = value;
+                              _isAddingNewCategory = false;
                               _newCategoryController.clear();
                             });
                           }
@@ -378,10 +372,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (_isAddingNewCategory) return null;
-                          if (value == null || value.isEmpty) {
+                          if (_isAddingNewCategory)
+                            return null; // skip validation if adding new category
+                          if (value == null || value.isEmpty)
                             return 'Please select a category';
-                          }
                           return null;
                         },
                       );
@@ -390,35 +384,24 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ],
               ),
 
-              // Inline new category input if adding new category
-              if (_isAddingNewCategory)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    const Text(
-                      'New Category Name',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _newCategoryController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (_isAddingNewCategory &&
-                            (value == null || value.trim().isEmpty)) {
-                          return 'Please enter a category name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+              // Inline add new category field
+              if (_isAddingNewCategory) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'New Category Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (_isAddingNewCategory &&
+                        (value == null || value.trim().isEmpty)) {
+                      return 'Please enter a category name';
+                    }
+                    return null;
+                  },
                 ),
+              ],
 
               const SizedBox(height: 16),
 
@@ -428,6 +411,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 children: [
                   Text(
                     'Date: ${_selectedDate.toLocal().toString().split(' ')[0]}',
+                    style: const TextStyle(fontSize: 16),
                   ),
                   TextButton.icon(
                     onPressed: _pickDate,
@@ -436,81 +420,15 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
 
+              // Submit button
               ElevatedButton(
-                onPressed: _isSaving ? null : _updateExpense,
-                child: _isSaving
-                    ? const CircularProgressIndicator()
-                    : const Text('Update Expense'),
-              ),
-
-              const SizedBox(height: 16),
-
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Expense'),
-                      content: const Text(
-                          'Are you sure you want to delete this expense?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    setState(() {
-                      _isSaving = true;
-                    });
-
-                    try {
-                      final user = FirebaseAuth.instance.currentUser;
-                      if (user != null) {
-                        await firestoreService.deleteExpense(
-                          expenseId: widget.expense.id,
-                          userId: user.uid,
-                        );
-                        if (mounted) Navigator.pop(context);
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                              Text('Failed to delete expense: $e')),
-                        );
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-                      }
-                    }
-                  }
-                },
-                child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Delete Expense'),
+                onPressed: _isSaving ? null : _saveIncome,
+                child:
+                    _isSaving
+                        ? const CircularProgressIndicator()
+                        : const Text('Save Income'),
               ),
             ],
           ),
@@ -519,4 +437,3 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 }
-

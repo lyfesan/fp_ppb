@@ -4,22 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fp_ppb/models/category.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
-import 'package:fp_ppb/views/screens/category/category_expense_screen.dart';
+import 'package:fp_ppb/views/screens/category/category_income_screen.dart';
 
 import '../../../models/account.dart';
-import '../../../models/expense.dart';
+import '../../../models/income.dart';
 import '../../../services/firestore_service.dart';
 
-class EditExpenseScreen extends StatefulWidget {
-  final Expense expense;
+class EditIncomeScreen extends StatefulWidget {
+  final Income incomeData;
 
-  const EditExpenseScreen({super.key, required this.expense});
+  const EditIncomeScreen({super.key, required this.incomeData});
 
   @override
-  State<EditExpenseScreen> createState() => _EditExpenseScreenState();
+  State<EditIncomeScreen> createState() => _EditIncomeScreenState();
 }
 
-class _EditExpenseScreenState extends State<EditExpenseScreen> {
+class _EditIncomeScreenState extends State<EditIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _amountController;
@@ -36,12 +36,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.expense.name);
+    _nameController = TextEditingController(text: widget.incomeData.name);
     // Format amount as string with dots:
-    _amountController = TextEditingController(text: formatWithDots(widget.expense.amount.toInt().toString()));
-    _selectedCategoryId = widget.expense.categoryId;
-    _selectedAccountId = widget.expense.accountId;
-    _selectedDate = widget.expense.date;
+    _amountController = TextEditingController(
+      text: formatWithDots(widget.incomeData.amount.toInt().toString()),
+    );
+    _selectedCategoryId = widget.incomeData.categoryId;
+    _selectedDate = widget.incomeData.date;
   }
 
   String formatWithDots(String input) {
@@ -63,7 +64,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     return buffer.toString();
   }
 
-  Future<void> _updateExpense() async {
+  Future<void> _updateIncome() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -86,7 +87,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           });
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryExpense(
+        final newCategoryId = await firestoreService.addCategoryIncome(
           user.uid,
           newCategoryName,
         );
@@ -108,7 +109,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       final cleanedAmount = _amountController.text.replaceAll('.', '').trim();
       final amount = double.parse(cleanedAmount);
 
-      final updatedExpense = widget.expense.copyWith(
+      final updatedIncome = widget.incomeData.copyWith(
         name: _nameController.text.trim(),
         amount: amount,
         accountId: _selectedAccountId,
@@ -116,13 +117,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         date: _selectedDate,
       );
 
-      await firestoreService.updateExpense(expense: updatedExpense);
+      await firestoreService.updateIncome(incomeData: updatedIncome);
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update expense: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update income: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -158,7 +159,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Expense')),
+      appBar: AppBar(title: const Text('Edit Income')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -170,11 +171,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Expense Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    'Income Name',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -182,8 +180,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter a name' : null,
+                    validator:
+                        (value) =>
+                            value == null || value.isEmpty
+                                ? 'Enter a name'
+                                : null,
                   ),
                 ],
               ),
@@ -195,10 +196,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 children: [
                   const Text(
                     'Amount',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -208,9 +206,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       border: OutlineInputBorder(),
                       prefixText: 'Rp ',
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (value) {
                       final cleaned = value?.replaceAll('.', '') ?? '';
                       final parsed = double.tryParse(cleaned);
@@ -224,7 +220,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       if (formatted != value) {
                         _amountController.value = TextEditingValue(
                           text: formatted,
-                          selection: TextSelection.collapsed(offset: formatted.length),
+                          selection: TextSelection.collapsed(
+                            offset: formatted.length,
+                          ),
                         );
                       }
                     },
@@ -232,6 +230,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Account dropdown
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -293,20 +293,18 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ],
               ),
 
+              const SizedBox(height: 16),
               // Category dropdown with inline add new category
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Category',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
                   StreamBuilder<QuerySnapshot>(
-                    stream: firestoreService.getCategoriesExpenseStream(
+                    stream: firestoreService.getCategoriesIncomeStream(
                       FirebaseAuthService.currentUser!.uid,
                     ),
                     builder: (context, snapshot) {
@@ -320,9 +318,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                         return const Text('No categories found.');
                       }
 
-                      final categories = snapshot.data!.docs
-                          .map((doc) => CategoryModel.fromFirestore(doc))
-                          .toList();
+                      final categories =
+                          snapshot.data!.docs
+                              .map((doc) => CategoryModel.fromFirestore(doc))
+                              .toList();
 
                       // Reset category selection if current selection is deleted
                       final categoryIds = categories.map((c) => c.id).toList();
@@ -331,12 +330,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       }
 
                       List<DropdownMenuItem<String>> dropdownItems =
-                      categories.map((category) {
-                        return DropdownMenuItem<String>(
-                          value: category.id,
-                          child: Text(category.name),
-                        );
-                      }).toList();
+                          categories.map((category) {
+                            return DropdownMenuItem<String>(
+                              value: category.id,
+                              child: Text(category.name),
+                            );
+                          }).toList();
 
                       dropdownItems.add(
                         DropdownMenuItem(
@@ -440,77 +439,84 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               const SizedBox(height: 24),
 
               ElevatedButton(
-                onPressed: _isSaving ? null : _updateExpense,
-                child: _isSaving
-                    ? const CircularProgressIndicator()
-                    : const Text('Update Expense'),
+                onPressed: _isSaving ? null : _updateIncome,
+                child:
+                    _isSaving
+                        ? const CircularProgressIndicator()
+                        : const Text('Update Income'),
               ),
 
               const SizedBox(height: 16),
 
               ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Expense'),
-                      content: const Text(
-                          'Are you sure you want to delete this expense?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed:
+                    _isSaving
+                        ? null
+                        : () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder:
+                                (context) => AlertDialog(
+                                  title: const Text('Delete Income'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this income?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(context, true),
+                                      child: const Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                          );
 
-                  if (confirm == true) {
-                    setState(() {
-                      _isSaving = true;
-                    });
+                          if (confirm == true) {
+                            setState(() {
+                              _isSaving = true;
+                            });
 
-                    try {
-                      final user = FirebaseAuth.instance.currentUser;
-                      if (user != null) {
-                        await firestoreService.deleteExpense(
-                          expenseId: widget.expense.id,
-                          userId: user.uid,
-                        );
-                        if (mounted) Navigator.pop(context);
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                              Text('Failed to delete expense: $e')),
-                        );
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-                      }
-                    }
-                  }
-                },
-                child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Delete Expense'),
+                            try {
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user != null) {
+                                await firestoreService.deleteIncome(
+                                  incomeId: widget.incomeData.id,
+                                  userId: user.uid,
+                                );
+                                if (mounted) Navigator.pop(context);
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to delete income: $e',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isSaving = false;
+                                });
+                              }
+                            }
+                          }
+                        },
+                child:
+                    _isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Delete Income'),
               ),
             ],
           ),
@@ -519,4 +525,3 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 }
-
