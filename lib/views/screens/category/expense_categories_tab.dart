@@ -66,7 +66,7 @@ class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
     // Check if any expenses are using this category before deleting.
     final linkedExpenses = await _firestoreService.checkCategoryExpense(userId, docID);
 
-    if (!mounted) return; // Check if the widget is still in the tree.
+    if (!mounted) return;
 
     if (linkedExpenses.isNotEmpty) {
       // If there are dependencies, show an informational dialog.
@@ -177,7 +177,7 @@ class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
                     onPressed: () => openAddOrUpdateDialog(docID: docID, currentName: categoryName),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline), //color: Colors.redAccent),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     tooltip: 'Delete Category',
                     onPressed: () => _handleDelete(docID),
                   ),

@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:fp_ppb/models/app_user.dart'; // Adjust the path if needed
-import 'package:fp_ppb/views/screens/category/manage_categories_screen.dart'; // Import the manage categories screen
-import 'package:fp_ppb/services/firestore_service.dart'; // Adjust the path if needed
-import 'profile_edit_screen.dart'; // Import the new edit screen
+import 'package:fp_ppb/models/app_user.dart';
+import 'package:fp_ppb/views/screens/account/manage_account_screen.dart';
+import 'package:fp_ppb/views/screens/category/manage_categories_screen.dart';
+import 'package:fp_ppb/services/firestore_service.dart';
+import 'package:get/get.dart';
+import '../navigation_menu.dart';
+import 'profile_edit_screen.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,10 +30,8 @@ class _ProfilePageState extends State<ProfilePage> {
     if (firebaseUser != null) {
       _userFuture = _firestoreService.getAppUser(firebaseUser.uid);
     } else {
-      // Handle case where there is no logged-in user
       _userFuture = Future.value(null);
     }
-    // Refresh the UI with the new future
     setState(() {});
   }
 
@@ -57,7 +58,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (shouldLogout == true) {
       await FirebaseAuth.instance.signOut();
-      // Navigate to the very first screen after logout
+      final navController = Get.find<NavigationController>();
+      navController.resetIndex();
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
@@ -122,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha:0.15),
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
@@ -148,7 +150,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text(
                   user.name,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18),
+                      fontWeight: FontWeight.bold, fontSize: 18
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
@@ -162,7 +165,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           IconButton(
             icon: Icon(Icons.edit_outlined,
-                color: Theme.of(context).primaryColor),
+                color: Theme.of(context).primaryColor
+            ),
             onPressed: () async {
               // Navigate to the edit screen and wait for a result
               final result = await Navigator.push(
@@ -173,7 +177,6 @@ class _ProfilePageState extends State<ProfilePage> {
               );
 
               // If the result is true, it means the profile was updated.
-              // Reload the user data to reflect the changes.
               if (result == true) {
                 _loadUserData();
               }
@@ -188,17 +191,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildSettingsMenu(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(8),
+      // Removed boxShadow for a flat look
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
+        // Removed boxShadow
       ),
       child: Column(
         children: [
@@ -208,8 +205,6 @@ class _ProfilePageState extends State<ProfilePage> {
             title: const Text('Manage Categories'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // ** THIS IS THE NEW CODE **
-              // Navigate to the ManageCategoriesScreen
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -225,7 +220,11 @@ class _ProfilePageState extends State<ProfilePage> {
             title: const Text('Manage Pocket/Account'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: Navigate to Manage Pocket page
+              Navigator.push(context,
+                  MaterialPageRoute(
+                    builder: (context) => ManageAccountsScreen(),
+                  )
+              );
             },
           ),
           const Divider(height: 0, indent: 16),

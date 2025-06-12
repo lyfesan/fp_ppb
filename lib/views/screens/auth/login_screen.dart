@@ -36,6 +36,14 @@ class _LoginScreenState extends State<LoginScreen> {
           });
         }
         else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Login Successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => AuthGate()),
           );

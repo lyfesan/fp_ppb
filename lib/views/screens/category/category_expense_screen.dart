@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import '../../../services/firebase_auth_service.dart';
@@ -63,7 +62,6 @@ class _CategoryExpenseScreenState extends State<CategoryExpenseScreen> {
             ],
           ),
     ).then((_) {
-      // Reset jika user tap di luar dialog
       textController.clear();
     });
   }

@@ -15,8 +15,6 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _textController = TextEditingController();
 
-  /// Opens a dialog to either add a new category or update an existing one.
-  /// This method is called from the parent screen's FloatingActionButton.
   void openAddOrUpdateDialog({String? docID, String? currentName}) {
     _textController.text = currentName ?? '';
     final isUpdating = docID != null;
@@ -61,7 +59,7 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
       _firestoreService.updateCategoryIncome(userId, docID, name);
     }
 
-    Navigator.pop(context); // Close the dialog
+    Navigator.pop(context);
     _textController.clear();
   }
 
@@ -78,7 +76,7 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
             onPressed: () {
               final userId = FirebaseAuthService.currentUser!.uid;
               _firestoreService.deleteCategoryIncome(userId, docID);
-              Navigator.pop(context); // Close the confirmation dialog
+              Navigator.pop(context);
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
@@ -123,35 +121,6 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
             final data = category.data() as Map<String, dynamic>;
             final categoryName = data['name'] as String? ?? 'No Name';
 
-            // return Card(
-            //   margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-            //   elevation: 2.0,
-            //   shape: RoundedRectangleBorder(
-            //     borderRadius: BorderRadius.circular(10.0),
-            //   ),
-            //   child: ListTile(
-            //     leading: const Icon(Icons.label_important_outline, color: Colors.green),
-            //     title: Text(
-            //       categoryName,
-            //       style: const TextStyle(fontWeight: FontWeight.w500),
-            //     ),
-            //     trailing: Row(
-            //       mainAxisSize: MainAxisSize.min,
-            //       children: [
-            //         IconButton(
-            //           icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
-            //           tooltip: 'Edit Category',
-            //           onPressed: () => openAddOrUpdateDialog(docID: docID, currentName: categoryName),
-            //         ),
-            //         IconButton(
-            //           icon: const Icon(Icons.delete_forever_outlined, color: Colors.redAccent),
-            //           tooltip: 'Delete Category',
-            //           onPressed: () => _confirmDelete(docID),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // );
             return ListTile(
               leading: const Icon(Icons.chevron_right),
               title: Text(categoryName),
@@ -164,7 +133,7 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
                     onPressed: () => openAddOrUpdateDialog(docID: docID, currentName: categoryName),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline), //, color: Colors.redAccent),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     tooltip: 'Delete Category',
                     onPressed: () => _confirmDelete(docID),
                   ),

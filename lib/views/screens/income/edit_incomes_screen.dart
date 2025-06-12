@@ -6,6 +6,7 @@ import 'package:fp_ppb/models/category.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
 import 'package:fp_ppb/views/screens/category/category_income_screen.dart';
 
+import '../../../models/account.dart';
 import '../../../models/income.dart';
 import '../../../services/firestore_service.dart';
 
@@ -25,6 +26,7 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
   final _newCategoryController = TextEditingController();
 
   String? _selectedCategoryId;
+  String? _selectedAccountId;
   bool _isAddingNewCategory = false;
   late DateTime _selectedDate;
 
@@ -110,6 +112,7 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
       final updatedIncome = widget.incomeData.copyWith(
         name: _nameController.text.trim(),
         amount: amount,
+        accountId: _selectedAccountId,
         categoryId: _selectedCategoryId,
         date: _selectedDate,
       );
@@ -228,6 +231,69 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Account dropdown
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Source Account',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  StreamBuilder<QuerySnapshot>(
+                      stream: firestoreService.getFinanceAccountStream(
+                        FirebaseAuthService.currentUser!.uid,
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return const Text('Error loading source account');
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Text(
+                            'No account found. Please add one first.',
+                          );
+                        }
+
+                        final account = snapshot.data!.docs
+                            .map((doc) => AccountModel.fromFirestore(doc))
+                            .toList();
+
+                        final dropdownItems = account
+                            .map(
+                              (account) => DropdownMenuItem<String>(
+                            value: account.id,
+                            child: Text(account.name),
+                          ),
+                        ).toList();
+
+                        return DropdownButtonFormField<String>(
+                          value: _selectedAccountId,
+                          items: dropdownItems,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedAccountId = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) { // skip validation if adding new category
+                            if (value == null || value.isEmpty) return 'Please select a category';
+                            return null;
+                          },
+                        );
+                      }
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
               // Category dropdown with inline add new category
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

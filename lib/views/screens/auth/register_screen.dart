@@ -45,6 +45,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _errorMessage = 'Registration failed. The email might already be in use or the password is too weak.';
           });
         } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Register Successful!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => AuthGate()),
           );
