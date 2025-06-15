@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../models/expense.dart';
+import '../../../models/income.dart';
 import '../../../services/firestore_service.dart';
-import 'add_expenses_screen.dart';
-import 'dayexpenses_screen.dart';
+import 'add_incomes_screen.dart';
+import 'dayincomes_screen.dart';
 
-class ExpensesScreen extends StatefulWidget {
-  const ExpensesScreen({super.key});
+class IncomesScreen extends StatefulWidget {
+  const IncomesScreen({super.key});
 
   @override
-  State<ExpensesScreen> createState() => _ExpensesScreenState();
+  State<IncomesScreen> createState() => _IncomesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen> {
+class _IncomesScreenState extends State<IncomesScreen> {
   int selectedYear = DateTime.now().year;
   int selectedMonth = DateTime.now().month;
 
@@ -22,7 +24,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   int daysInMonth(int year, int month) {
     var beginningNextMonth =
-    (month < 12) ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
+        (month < 12) ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
     return beginningNextMonth.subtract(const Duration(days: 1)).day;
   }
 
@@ -40,18 +42,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     final monthNames = List.generate(
       12,
-          (i) => DateFormat.MMMM().format(DateTime(0, i + 1)),
+      (i) => DateFormat.MMMM().format(DateTime(0, i + 1)),
     );
     final years = List.generate(10, (i) => DateTime.now().year - i);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Expenses by Day'), centerTitle: true),
+      appBar: AppBar(title: const Text('Incomes by Day'), centerTitle: true),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => AddExpenseScreen()),
+            MaterialPageRoute(builder: (_) => AddIncomeScreen()),
           );
         },
       ),
@@ -134,12 +136,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           ),
                         ),
                         items:
-                        years.map((year) {
-                          return DropdownMenuItem(
-                            value: year,
-                            child: Text(year.toString()),
-                          );
-                        }).toList(),
+                            years.map((year) {
+                              return DropdownMenuItem(
+                                value: year,
+                                child: Text(year.toString()),
+                              );
+                            }).toList(),
                         onChanged: (value) {
                           if (value != null) {
                             setState(() {
@@ -159,8 +161,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
           // Firestore stream of expenses for selected month
           Expanded(
-            child: StreamBuilder<List<Expense>>(
-              stream: firestoreService.getExpenses(
+            child: StreamBuilder<List<Income>>(
+              stream: firestoreService.getIncome(
                 userId: FirebaseAuth.instance.currentUser!.uid,
                 startDate: startDate,
                 endDate: endDate,
@@ -170,35 +172,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final expenses = snapshot.data ?? [];
-                print('Expenses count: ${expenses.length}');
-                print(
-                  'Expenses dates: ${expenses.map((e) => e.date).toList()}',
-                );
+                final incomes = snapshot.data ?? [];
+                print('Incomes count: ${incomes.length}');
+                print('Incomes dates: ${incomes.map((e) => e.date).toList()}');
 
-                if (expenses.isEmpty) {
-                  return const Center(child: Text('No expenses this month.'));
+                if (incomes.isEmpty) {
+                  return const Center(child: Text('No incomes this month.'));
                 }
 
                 // Group expenses by day
-                final grouped = <DateTime, List<Expense>>{};
-                for (var e in expenses) {
+                final grouped = <DateTime, List<Income>>{};
+                for (var e in incomes) {
                   final day = DateTime(e.date.year, e.date.month, e.date.day);
                   grouped.putIfAbsent(day, () => []).add(e);
                 }
 
                 final sortedDays =
-                grouped.keys.toList()..sort((a, b) => a.compareTo(b));
+                    grouped.keys.toList()..sort((a, b) => a.compareTo(b));
 
                 return ListView.builder(
                   itemCount: sortedDays.length,
                   itemBuilder: (context, index) {
                     final day = sortedDays[index];
-                    final dayExpenses = grouped[day]!;
-                    final total = dayExpenses.fold<double>(
+                    final dayIncomes = grouped[day]!;
+                    final total = dayIncomes.fold<double>(
                       0,
-                          (sum, e) =>
-                      sum + (double.tryParse(e.amount.toString()) ?? 0),
+                      (sum, e) =>
+                          sum + (double.tryParse(e.amount.toString()) ?? 0),
                     );
 
                     final formattedTotal = NumberFormat.currency(
@@ -231,7 +231,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => DayExpensesScreen(date: day),
+                                builder: (_) => DayIncomesScreen(date: day),
                               ),
                             );
                             // print("Tapped on ${day.toIso8601String()}");
@@ -249,7 +249,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 padding: const EdgeInsets.all(16),
                                 child: Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
@@ -259,7 +259,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          '${dayExpenses.length} expenses',
+                                          '${dayIncomes.length} incomes',
                                           style: TextStyle(
                                             color: Colors.grey[800],
                                             fontSize: 16,

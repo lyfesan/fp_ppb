@@ -2,15 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
 import 'package:fp_ppb/models/category.dart';
-
+import 'package:fp_ppb/core/constants/predefined_data.dart';
 import '../models/app_user.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
 
 class FirestoreService {
-  // Collection reference for users
-  // It's good practice to use the UID from Firebase Auth as the document ID
-
+  List<String> initIncomeCategories = PredefinedData.incomeCategories;
+  List<String> initExpenseCategories = PredefinedData.expenseCategories;
+  List<String> initFinanceAccount = PredefinedData.financeAccount;
   final CollectionReference<Map<String, dynamic>> usersCollection =
   FirebaseFirestore.instance.collection('users');
 
@@ -40,14 +40,24 @@ class FirestoreService {
         name: name,
         email: firebaseUser.email!,
         photo: photoUrl ?? firebaseUser.photoURL,
-        // Use provided or Auth photoURL
         createdAt: now,
-        // Or firebaseUser.metadata.creationTime
         updatedAt: now,
       );
 
-      // Set the document in 'users' collection with UID as document ID
       await usersCollection.doc(firebaseUser.uid).set(newUser.toJson());
+
+      for(String item in initFinanceAccount) {
+        addFinanceAccount(newUser.id, item);
+      }
+
+      for(String item in initIncomeCategories) {
+        addCategoryIncome(newUser.id, item);
+      }
+
+      for(String item in initExpenseCategories) {
+        addCategoryExpense(newUser.id, item);
+      }
+
       if (kDebugMode) {
         print('AppUser created in Firestore with ID: ${firebaseUser.uid}');
       }
@@ -55,7 +65,6 @@ class FirestoreService {
       if (kDebugMode) {
         print('Error creating AppUser in Firestore: $e');
       }
-      // Rethrow or handle as per your app's error strategy
       rethrow;
     }
   }
@@ -75,6 +84,27 @@ class FirestoreService {
         print('Error getting AppUser: $e');
       }
       return null;
+    }
+  }
+
+  Future<bool> isEmailAlreadyInUse(String email, String currentUserId) async {
+    try {
+      final querySnapshot = await usersCollection
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return false;
+      }
+
+      final docId = querySnapshot.docs.first.id;
+      return docId != currentUserId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking email: $e');
+      }
+      return true;
     }
   }
 
@@ -111,14 +141,86 @@ class FirestoreService {
     }
   }
 
+  Future<String> addFinanceAccount(String userId, String name) async {
+    final accountRef = await usersCollection
+        .doc(userId)
+        .collection('account')
+        .add({'name': name, 'updatedAt': Timestamp.now()});
+
+    return accountRef.id;
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getFinanceAccountStream(
+      String userId) {
+    return usersCollection
+        .doc(userId)
+        .collection('account')
+        .orderBy('name')
+        .snapshots();
+  }
+  Future<void> updateFinanceAccount(
+      String userId,
+      String docId,
+      String updatedName,
+      ) {
+    return usersCollection
+        .doc(userId)
+        .collection('account')
+        .doc(docId)
+        .update({'name': updatedName, 'updatedAt': Timestamp.now()});
+  }
+
+  Future<bool> canAccountBeDeleted(String userId, String docId) async {
+
+    List<dynamic> constraintList =
+    await checkFinanceAccountConstraints(userId, docId);
+
+    return constraintList.isEmpty;
+  }
+
+  Future<List<dynamic>> checkFinanceAccountConstraints(
+      String userId,
+      String docID,
+      ) async {
+    final expensesQuery =
+    await expenses.where('accountId', isEqualTo: docID).get();
+
+    final incomeQuery =
+    await income.where('accountId', isEqualTo: docID).get();
+
+    List<dynamic> constraintList = [];
+    for (var doc in expensesQuery.docs) {
+      try {
+        constraintList.add(Expense.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Expense object: $e');
+      }
+    }
+
+    for (var doc in incomeQuery.docs) {
+      try {
+        constraintList.add(Income.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Income object: $e');
+      }
+    }
+
+    return constraintList;
+  }
+
+  Future<void> deleteFinanceAccount(String userId, String docID) {
+    return usersCollection
+        .doc(userId)
+        .collection('account')
+        .doc(docID)
+        .delete();
+  }
+
   Future<String> addCategoryExpense(String userId, String name) async {
     final docRef = await usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
-        .add({
-      'name': name,
-      'timestamp': Timestamp.now(),
-    });
+        .add({'name': name, 'timestamp': Timestamp.now()});
 
     return docRef.id; // return the newly created doc's ID
   }
@@ -145,19 +247,64 @@ class FirestoreService {
         .update({'name': newName, 'timestamp': Timestamp.now()});
   }
 
-  Future<void> deleteCategoryExpense(String userId, String docID) {
-    return usersCollection
+  Future<List<Expense>> checkCategoryExpense(
+      String userId,
+      String docID,
+      ) async {
+    // Check if there are any expenses associated with this category
+    final expensesQuery =
+    await FirebaseFirestore.instance
+        .collection('expenses')
+        .where('categoryId', isEqualTo: docID)
+        .get();
+
+    List<Expense> expensesList = [];
+    for (var doc in expensesQuery.docs) {
+      try {
+        expensesList.add(Expense.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Expense object: $e');
+      }
+    }
+
+    return expensesList;
+  }
+
+  Future<List<Expense>> checkCategoryIncome(String userId, String docID) async {
+    // Check if there are any expenses associated with this category
+    final expensesQuery =
+    await FirebaseFirestore.instance
+        .collection('incomes')
+        .where('categoryId', isEqualTo: docID)
+        .get();
+
+    List<Expense> expensesList = [];
+    for (var doc in expensesQuery.docs) {
+      try {
+        expensesList.add(Expense.fromFirestore(doc));
+      } catch (e) {
+        print('Error creating Income object: $e');
+      }
+    }
+
+    return expensesList;
+  }
+
+  Future<void> deleteCategoryExpense(String userId, String docID) async {
+    await usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
         .doc(docID)
         .delete();
   }
 
-  Future<void> addCategoryIncome(String userId, String name) {
-    return usersCollection.doc(userId).collection('IncomeCategory').add({
-      'name': name,
-      'timestamp': Timestamp.now(),
-    });
+  Future<String> addCategoryIncome(String userId, String name) async {
+    final docRef = await usersCollection
+        .doc(userId)
+        .collection('IncomeCategory')
+        .add({'name': name, 'timestamp': Timestamp.now()});
+
+    return docRef.id;
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCategoriesIncomeStream(
@@ -204,11 +351,34 @@ class FirestoreService {
           .get();
 
       if (doc.exists) {
-        // Gunakan factory constructor yang sudah kita buat sebelumnya
         print("Category found: ${doc.data()}");
         return CategoryModel.fromFirestore(doc);
       }
-      return null; // Kembalikan null jika kategori tidak ditemukan (mungkin sudah dihapus)
+    } catch (e) {
+      print("Error getting category by ID: $e");
+      return null;
+    }
+    return null;
+  }
+
+  Future<CategoryModel?> getIncomeCategoryById(
+      String userId,
+      String categoryId,
+      ) async {
+    try {
+      final doc =
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('IncomeCategory')
+          .doc(categoryId)
+          .get();
+
+      if (doc.exists) {
+        print("Category found: ${doc.data()}");
+        return CategoryModel.fromFirestore(doc);
+      }
+      return null;
     } catch (e) {
       print("Error getting category by ID: $e");
       return null;
@@ -234,7 +404,6 @@ class FirestoreService {
     }
   }
 
-  // Get expenses for a specific user and date range
   Stream<List<Expense>> getExpenses({
     required String userId,
     required DateTime startDate,
@@ -242,6 +411,24 @@ class FirestoreService {
   }) {
     return expenses
         .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map(
+          (snapshot) =>
+          snapshot.docs.map((doc) => Expense.fromFirestore(doc)).toList(),
+    );
+  }
+
+  Stream<List<Expense>> getExpensesByAccount({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String accountId,
+  }) {
+    return expenses
+        .where('userId', isEqualTo: userId)
+        .where('accountId', isEqualTo: accountId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
         .snapshots()
@@ -299,7 +486,6 @@ class FirestoreService {
     }
   }
 
-// Get incomes for user in a date range
   Stream<List<Income>> getIncome({
     required String userId,
     required DateTime startDate,
@@ -316,7 +502,25 @@ class FirestoreService {
     );
   }
 
-// Update income
+  Stream<List<Income>> getIncomeByAccount({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String accountId,
+  }) {
+    return income
+        .where('userId', isEqualTo: userId)
+        .where('accountId', isEqualTo: accountId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map(
+          (snapshot) =>
+          snapshot.docs.map((doc) => Income.fromFirestore(doc)).toList(),
+    );
+  }
+
+  // Update income
   Future<void> updateIncome({required Income incomeData}) async {
     final docRef = income.doc(incomeData.id);
     final docSnapshot = await docRef.get();
@@ -331,7 +535,7 @@ class FirestoreService {
     await docRef.update(incomeData.toMap());
   }
 
-// Delete income
+  // Delete income
   Future<void> deleteIncome({
     required String incomeId,
     required String userId,
@@ -345,5 +549,149 @@ class FirestoreService {
     }
 
     await docRef.delete();
+  }
+
+  Stream<List<Map<String, dynamic>>> getExpensesByCategory({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return expenses
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+      Map<String, double> categoryTotals = {};
+      for (var doc in snapshot.docs) {
+        Expense expense = Expense.fromFirestore(doc);
+        if (categoryTotals.containsKey(expense.categoryId)) {
+          categoryTotals[expense.categoryId!] =
+              categoryTotals[expense.categoryId!]! + expense.amount;
+        } else {
+          categoryTotals[expense.categoryId!] = expense.amount;
+        }
+      }
+
+      List<Map<String, dynamic>> result =
+      categoryTotals.entries
+          .map(
+            (entry) => {'categoryId': entry.key, 'total': entry.value},
+      )
+          .toList();
+
+      result.sort((a, b) => b['total'].compareTo(a['total']));
+
+      return result;
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> getExpensesByCategoryAndAccount({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String accountId,
+  }) {
+    return expenses
+        .where('userId', isEqualTo: userId)
+        .where('accountId', isEqualTo: accountId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+      Map<String, double> categoryTotals = {};
+      for (var doc in snapshot.docs) {
+        Expense expense = Expense.fromFirestore(doc);
+        if (categoryTotals.containsKey(expense.categoryId)) {
+          categoryTotals[expense.categoryId!] =
+              categoryTotals[expense.categoryId!]! + expense.amount;
+        } else {
+          categoryTotals[expense.categoryId!] = expense.amount;
+        }
+      }
+
+      List<Map<String, dynamic>> result =
+      categoryTotals.entries
+          .map(
+            (entry) => {'categoryId': entry.key, 'total': entry.value},
+      )
+          .toList();
+
+      result.sort((a, b) => b['total'].compareTo(a['total']));
+
+      return result;
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> getIncomesByCategory({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return income
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+      Map<String, double> categoryTotals = {};
+      for (var doc in snapshot.docs) {
+        Income income = Income.fromFirestore(doc);
+        if (categoryTotals.containsKey(income.categoryId)) {
+          categoryTotals[income.categoryId!] =
+              categoryTotals[income.categoryId!]! + income.amount;
+        } else {
+          categoryTotals[income.categoryId!] = income.amount;
+        }
+      }
+
+      List<Map<String, dynamic>> result =
+      categoryTotals.entries
+          .map(
+            (entry) => {'categoryId': entry.key, 'total': entry.value},
+      )
+          .toList();
+
+      result.sort((a, b) => b['total'].compareTo(a['total']));
+
+      return result;
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> getIncomesByCategoryAndAccount({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String accountId,
+  }) {
+    return income
+        .where('userId', isEqualTo: userId)
+        .where('accountId', isEqualTo: accountId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+      Map<String, double> categoryTotals = {};
+      for (var doc in snapshot.docs) {
+        Income income = Income.fromFirestore(doc);
+        if (categoryTotals.containsKey(income.categoryId)) {
+          categoryTotals[income.categoryId!] =
+              categoryTotals[income.categoryId!]! + income.amount;
+        } else {
+          categoryTotals[income.categoryId!] = income.amount;
+        }
+      }
+
+      List<Map<String, dynamic>> result =
+      categoryTotals.entries
+          .map(
+            (entry) => {'categoryId': entry.key, 'total': entry.value},
+      )
+          .toList();
+
+      result.sort((a, b) => b['total'].compareTo(a['total']));
+
+      return result;
+    });
   }
 }

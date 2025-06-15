@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:fp_ppb/views/screens/profile/profile_page.dart';
 import 'package:get/get.dart';
 
 import 'expenses/expenses_screen.dart';
-import 'category_expense_screen.dart';
-import 'category_income_screen.dart';
+import 'category/category_expense_screen.dart';
+import 'category/category_income_screen.dart';
+import 'income/incomes_screen.dart';
 import 'home_screen.dart';
 
 class NavigationMenu extends StatelessWidget {
@@ -14,14 +16,18 @@ class NavigationMenu extends StatelessWidget {
     HomeScreen(),
     ExpensesScreen(),
     // CategoryExpenseScreen(),
-    Center(child: Text('Income')),
-    Center(child: Text('Settings')),
+    IncomesScreen(),
+    // Center(child: Text('Income')),
+    // Center(child: Text('Settings')),
+    //CategoryIncomeScreen(),
+    ProfilePage(),
+    // CategoryExpenseScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Obx(
-          () => Scaffold(
+      () => Scaffold(
         body: screens[navController.selectedIndex.value],
         bottomNavigationBar: NavigationBar(
           selectedIndex: navController.selectedIndex.value,
@@ -36,7 +42,7 @@ class NavigationMenu extends StatelessWidget {
               icon: Icon(Icons.sticky_note_2_outlined),
               label: "Income",
             ),
-            NavigationDestination(icon: Icon(Icons.person), label: "Settings"),
+            NavigationDestination(icon: Icon(Icons.person), label: "Profile"),
           ],
         ),
       ),
@@ -50,4 +56,9 @@ class NavigationController extends GetxController {
   void changeIndex(int index) {
     selectedIndex.value = index;
   }
+
+  void resetIndex() {
+    selectedIndex.value = 0;
+  }
+
 }
