@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fp_ppb/models/currency_model.dart';
 import 'package:fp_ppb/models/app_user.dart';
+import 'package:fp_ppb/services/currency_exchange_service.dart';
 import 'package:fp_ppb/views/screens/account/manage_account_screen.dart';
 import 'package:fp_ppb/views/screens/category/manage_categories_screen.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
+import 'package:fp_ppb/views/screens/profile/currency_selection_screen.dart';
 import 'package:get/get.dart';
 import '../navigation_menu.dart';
 import 'profile_edit_screen.dart';
@@ -17,6 +20,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final FirestoreService _firestoreService = FirestoreService();
+  // Get instance of the currency service
+  final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   late Future<AppUser?> _userFuture;
 
   @override
@@ -40,7 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Logout'),
+          title: const Text('Confirm Sign Out'),
           content: const Text('Are you sure you want to sign out?'),
           actions: <Widget>[
             TextButton(
@@ -99,10 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red[700],
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16)
                     ),
                     onPressed: _signOut,
                     child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
@@ -124,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha:0.15),
+            color: Colors.grey.withAlpha(30),
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
@@ -168,15 +170,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: Theme.of(context).primaryColor
             ),
             onPressed: () async {
-              // Navigate to the edit screen and wait for a result
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ProfileEditScreen(user: user),
                 ),
               );
-
-              // If the result is true, it means the profile was updated.
               if (result == true) {
                 _loadUserData();
               }
@@ -190,12 +189,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildSettingsMenu(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
-      // Removed boxShadow for a flat look
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        // Removed boxShadow
       ),
       child: Column(
         children: [
@@ -222,19 +218,41 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () {
               Navigator.push(context,
                   MaterialPageRoute(
-                    builder: (context) => ManageAccountsScreen(),
+                    builder: (context) => const ManageAccountsScreen(),
                   )
               );
             },
           ),
           const Divider(height: 0, indent: 16),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
-            leading: const Icon(Icons.monetization_on_outlined),
-            title: const Text('Currency'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Navigate to Currency page
+          ValueListenableBuilder<Currency>(
+            valueListenable: _currencyService.activeCurrencyNotifier,
+            builder: (context, activeCurrency, child) {
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+                leading: const Icon(Icons.monetization_on_outlined),
+                title: const Text('Currency'),
+                // Display the active currency code and an icon
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      activeCurrency.code,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+                onTap: () {
+                  // Navigate to the new selection screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CurrencySelectionScreen(),
+                    ),
+                  );
+                },
+              );
             },
           ),
           const Divider(height: 0, indent: 16),

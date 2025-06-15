@@ -150,9 +150,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 onPressed: _isLoading ? null : _saveProfile,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
@@ -163,7 +160,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     color: Colors.white,
                   ),
                 )
-                    : const Text('Save Changes'),
+                    : Text('Save Changes', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
               ),
             ],
           ),

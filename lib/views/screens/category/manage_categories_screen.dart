@@ -30,10 +30,6 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     _tabController.dispose();
     super.dispose();
   }
-
-  /// This function is called when the FloatingActionButton is pressed.
-  /// It checks which tab is currently selected and calls the `openAddOrUpdateDialog`
-  /// method on the corresponding child widget.
   void _handleAddButtonPressed() {
     // _tabController.index == 0 corresponds to the "Income" tab.
     if (_tabController.index == 0) {
@@ -72,6 +68,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        shape: const CircleBorder(),
         onPressed: _handleAddButtonPressed,
         tooltip: 'Add New Category',
         child: const Icon(Icons.add),
