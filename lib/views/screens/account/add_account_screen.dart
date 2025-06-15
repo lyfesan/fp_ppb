@@ -102,9 +102,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                   onPressed: _userId == null ? null : _addAccount,
                   child: const Text(

@@ -150,8 +150,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   Widget build(BuildContext context) {
     if (_userId == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Manage Accounts')),
-        body: Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: const Text('Manage Accounts')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -187,11 +187,11 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                 margin: const EdgeInsets.symmetric(vertical: 8.0),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(28),
                   border: Border.all(color: Theme.of(context).colorScheme.outline, width: 1.0),
                 ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0), // Adjusted padding
                   title: Text(
                     account.name,
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -227,6 +227,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        shape: const CircleBorder(),
         onPressed: () async {
           final result = await Navigator.push(
             context,
