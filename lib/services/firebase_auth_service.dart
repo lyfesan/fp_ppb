@@ -4,7 +4,6 @@ import 'firestore_service.dart';
 
 class FirebaseAuthService {
   static final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  // Instantiate FirestoreService to use its methods
   static final FirestoreService _firestoreService = FirestoreService();
 
   // Private constructor to prevent instantiation
@@ -41,11 +40,11 @@ class FirebaseAuthService {
     }
   }
 
-  // Sign up with email and password - now also takes a name
+  // Sign up with email and password
   static Future<UserCredential?> signUpWithEmailAndPassword({
     required String email,
     required String password,
-    required String name, // Add name parameter
+    required String name,
   }) async {
     try {
       UserCredential userCredential =
@@ -59,32 +58,30 @@ class FirebaseAuthService {
 
       User? firebaseUser = userCredential.user;
       if (firebaseUser != null) {
-        // Optionally, update Firebase Auth profile display name
+
         await firebaseUser.updateDisplayName(name);
-        // It's good to reload the user to ensure the latest data is available
         await firebaseUser.reload();
-        firebaseUser = _firebaseAuth.currentUser; // Get the updated user
+        firebaseUser = _firebaseAuth.currentUser;
 
         // Create the user document in Firestore
         try {
           await _firestoreService.createAppUser(
-            firebaseUser: firebaseUser!, // Non-null asserted as we checked
+            firebaseUser: firebaseUser!,
             name: name,
-            // photoUrl: null, // Pass a photo URL if you have one at this stage
+            // photoUrl: null,
           );
         } catch (e) {
-          // Handle Firestore error, e.g., log it.
-          // You might want to decide if the Firebase Auth user should be deleted
-          // if Firestore creation fails, which is a more complex scenario.
           if (kDebugMode) {
             print('Firestore user creation failed, but Auth user was created: $e');
           }
         }
 
-        // if (firebaseUser != null && !firebaseUser.emailVerified) {
-        //   await firebaseUser.sendEmailVerification();
-        //   print('Verification email sent.');
-        // }
+        if (firebaseUser != null && !firebaseUser.emailVerified) {
+          await firebaseUser.sendEmailVerification();
+          if (kDebugMode) {
+            print('Verification email sent.');
+          }
+        }
       }
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -92,7 +89,6 @@ class FirebaseAuthService {
         print('Failed to sign up: ${e.message}');
         print('Error code: ${e.code}');
       }
-      // If sign-up fails, you might want to return the error or a specific code
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -131,4 +127,51 @@ class FirebaseAuthService {
       }
     }
   }
+
+  static Future<void> sendEmailVerification() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        if (kDebugMode) {
+          print('Verification email sent to ${user.email}');
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        print('Failed to send verification email: ${e.message}');
+      }
+    }
+  }
+
+  static Future<void> updateUserEmail({
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw Exception('No user currently signed in.');
+    }
+
+    final cred = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+
+    try {
+      await user.reauthenticateWithCredential(cred);
+
+      await user.updateEmail(newEmail);
+      //await user.verifyBeforeUpdateEmail(newEmail);
+      if (kDebugMode) {
+        print('User email updated successfully in Firebase Auth.');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        print('Failed to update email in Firebase Auth: ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
 }

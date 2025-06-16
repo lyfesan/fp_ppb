@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fp_ppb/models/app_user.dart';
+import 'package:fp_ppb/services/firebase_auth_service.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -33,67 +35,124 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   Future<void> _saveProfile() async {
-    // Validate the form before proceeding
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoading = true);
 
-    try {
-      final newEmail = _emailController.text.trim();
+    final newEmail = _emailController.text.trim();
+    final newName = _nameController.text.trim();
+    final bool emailChanged = newEmail != widget.user.email;
 
-      // Check if the email has been changed and if the new email is already in use
-      if (newEmail != widget.user.email) {
+    try {
+      if (emailChanged) {
+        // Check if the new email is already used by another account in Firestore
         final bool isEmailTaken = await _firestoreService.isEmailAlreadyInUse(newEmail, widget.user.id);
         if (isEmailTaken) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('This email is already in use by another account.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          // Stop the process if the email is taken
+          _showErrorSnackBar('This email is already in use by another account.');
           setState(() => _isLoading = false);
           return;
         }
+
+        final password = await _showPasswordDialog();
+        if (password == null) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // Update email in Firebase Auth
+        await FirebaseAuthService.updateUserEmail(
+          newEmail: newEmail,
+          currentPassword: password,
+        );
       }
 
-      // Prepare the data to be updated in Firestore.
-      final updateData = {
-        'name': _nameController.text.trim(),
-        'email': newEmail,
-      };
-
-      // Call the Firestore service to update the user document
+      // Update user data in Firestore
+      final updateData = {'name': newName, 'email': newEmail};
       await _firestoreService.updateAppUser(widget.user.id, updateData);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Pop the screen and return `true` to indicate a successful update
-        Navigator.of(context).pop(true);
+      _showSuccessSnackBar('Profile updated successfully!');
+      if (mounted) Navigator.of(context).pop(true);
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      if (e.code == 'wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = 'This email is already in use by another account.';
       }
+      _showErrorSnackBar(errorMessage);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update profile: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _showErrorSnackBar('Failed to update profile: $e');
     } finally {
-      // Ensure loading state is turned off
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    try {
+      await FirebaseAuthService.sendPasswordResetEmail(email: widget.user.email);
+      _showSuccessSnackBar('A password reset link has been sent to ${widget.user.email}.');
+    } catch (e) {
+      _showErrorSnackBar('Failed to send password reset email: $e');
+    }
+  }
+
+  Future<String?> _showPasswordDialog() {
+    final passwordController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Re-authenticate'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please enter your current password to continue.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (passwordController.text.isNotEmpty) {
+                  Navigator.of(context).pop(passwordController.text);
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.green),
+      );
     }
   }
 
@@ -138,7 +197,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter an email';
                   }
-                  // A simple regex for email validation
                   if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
                     return 'Please enter a valid email address';
                   }
@@ -155,12 +213,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-                    : Text('Save Changes', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+                    : const Text('Save Changes'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _isLoading ? null : _sendPasswordReset,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Send Password Reset Email'),
               ),
             ],
           ),

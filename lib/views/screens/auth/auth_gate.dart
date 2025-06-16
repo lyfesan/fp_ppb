@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../../services/firebase_auth_service.dart';
+import 'package:fp_ppb/services/firebase_auth_service.dart';
+import 'package:fp_ppb/views/screens/auth/verify_email_screen.dart';
+import 'package:get/get.dart';
 import 'login_screen.dart';
 import '../navigation_menu.dart';
-import 'package:get/get.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -19,45 +20,18 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        // If user is logged in, show HomePage
-        if (snapshot.hasData && snapshot.data != null) {
-          // return const HomePage();
+        if (!snapshot.hasData) {
+          return const LoginScreen();
+        }
+
+        final user = snapshot.data!;
+        if (user.emailVerified) {
           Get.put(NavigationController());
           return NavigationMenu();
-        }
-        // If user is not logged in, show LoginScreen
-        else {
-          return const LoginScreen();
+        } else {
+          return const VerifyEmailScreen();
         }
       },
     );
   }
 }
-
-/*
-  How to use AuthGate:
-
-  In your main.dart, after initializing Firebase, set AuthGate as your home:
-
-  void main() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(
-      // options: DefaultFirebaseOptions.currentPlatform, // If you have firebase_options.dart
-    );
-    runApp(MyApp());
-  }
-
-  class MyApp extends StatelessWidget {
-    @override
-    Widget build(BuildContext context) {
-      return MaterialApp(
-        title: 'Flutter Firebase Auth Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
-        home: AuthGate(), // Use AuthGate here
-      );
-    }
-  }
-*/
