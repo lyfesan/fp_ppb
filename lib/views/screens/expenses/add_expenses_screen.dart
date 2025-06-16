@@ -34,6 +34,34 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   bool _isSaving = false;
 
+  String? _selectedIcon;
+
+  final List<String> _iconOptions = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
+
+
   Future<void> _saveExpense() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -45,12 +73,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
       if (_isAddingNewCategory) {
         final newCategoryName = _newCategoryController.text.trim();
-        if (newCategoryName.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a category name')));
+        if (newCategoryName.isEmpty || _selectedIcon == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please enter a category name and select an icon')));
           setState(() => _isSaving = false);
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryExpense(user.uid, newCategoryName);
+
+        final newCategoryId = await firestoreService.addCategoryExpense(
+          user.uid,
+          newCategoryName,
+          _selectedIcon!, // Add this
+        );
         _selectedCategoryId = newCategoryId;
       }
 
@@ -61,7 +95,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
 
       // --- CONVERSION LOGIC ON SAVE ---
-      final amountInActiveCurrency = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
+      final amountInActiveCurrency = double.tryParse(
+          _amountController.text.replaceAll('.', '').replaceAll(',', '')
+      ) ?? 0.0;
       final exchangeRate = _currencyService.exchangeRateNotifier.value;
       // Convert the input amount back to IDR for saving
       final amountInIdr = (exchangeRate > 0) ? amountInActiveCurrency / exchangeRate : 0.0;
@@ -84,6 +120,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  TextInputFormatter thousandsSeparatorInputFormatter() {
+    final formatter = NumberFormat.decimalPattern('id'); // uses '.' for thousands
+    return TextInputFormatter.withFunction((oldValue, newValue) {
+      final text = newValue.text.replaceAll('.', '').replaceAll(',', '');
+      if (text.isEmpty) return newValue.copyWith(text: '');
+
+      final number = int.tryParse(text);
+      if (number == null) return oldValue;
+
+      final newText = formatter.format(number);
+      return TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
+    });
   }
 
   void _pickDate() async {
@@ -128,15 +181,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 builder: (context, activeCurrency, child) {
                   return TextFormField(
                     controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Amount',
                       border: const OutlineInputBorder(),
                       prefixText: '${activeCurrency.symbol} ',
                     ),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*'))],
+                    inputFormatters: [thousandsSeparatorInputFormatter()],
                     validator: (value) {
-                      if (value == null || value.isEmpty || (double.tryParse(value.replaceAll(',', '')) ?? 0) <= 0) {
+                      final clean = value?.replaceAll('.', '').replaceAll(',', '') ?? '';
+                      if (clean.isEmpty || (double.tryParse(clean) ?? 0) <= 0) {
                         return 'Enter a valid amount';
                       }
                       return null;
@@ -168,15 +222,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               // Category dropdown
               _buildCategoryDropdown(),
 
-              if (_isAddingNewCategory)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: TextFormField(
-                    controller: _newCategoryController,
-                    decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
-                    validator: (v) => _isAddingNewCategory && (v == null || v.trim().isEmpty) ? 'Please enter a category name' : null,
+              if (_isAddingNewCategory) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                const Text('Choose an icon:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 150, // Adjust height to your design
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.horizontal,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: _iconOptions.length,
+                    itemBuilder: (context, index) {
+                      final iconName = _iconOptions[index];
+                      final isSelected = iconName == _selectedIcon;
+
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedIcon = iconName),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isSelected ? Colors.blueAccent : Colors.grey.shade300,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                          ),
+                          child: Image.asset('assets/icons/$iconName', width: 40, height: 40),
+                        ),
+                      );
+                    },
                   ),
                 ),
+              ],
               const SizedBox(height: 16),
 
               // Date picker

@@ -105,45 +105,49 @@ class DayExpensesScreen extends StatelessWidget {
                                   children: [
                                     // Left part: icon + name + category
                                     Expanded(
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.receipt_long, color: Colors.grey[700]),
-                                          const SizedBox(width: 12),
-                                          Flexible(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  e.name,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                    color: Colors.grey[800],
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                FutureBuilder<CategoryModel?>(
-                                                  future: firestoreService.getExpenseCategoryById(
-                                                    FirebaseAuthService.currentUser!.uid,
-                                                    e.categoryId,
-                                                  ),
-                                                  builder: (context, catSnapshot) {
-                                                    if (catSnapshot.connectionState == ConnectionState.waiting) {
-                                                      return Text('Category: Loading...', style: TextStyle(color: Colors.grey[600]));
-                                                    }
-                                                    if (catSnapshot.hasError || !catSnapshot.hasData) {
-                                                      return Text('Category: Unknown', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[600]));
-                                                    }
-                                                    return Text(
-                                                      'Category: ${catSnapshot.data!.name}',
+                                      child: FutureBuilder<CategoryModel?>(
+                                        future: firestoreService.getExpenseCategoryById(
+                                          FirebaseAuthService.currentUser!.uid,
+                                          e.categoryId,
+                                        ),
+                                        builder: (context, catSnapshot) {
+                                          final category = catSnapshot.data;
+                                          return Row(
+                                            children: [
+                                              if (category != null && category.icon.isNotEmpty)
+                                                Image.asset(
+                                                  'assets/icons/${category.icon}',
+                                                  width: 32,
+                                                  height: 32,
+                                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                                                )
+                                              else
+                                                Icon(Icons.category, color: Colors.grey[600]),
+
+                                              const SizedBox(width: 12),
+                                              Flexible(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      e.name,
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      category?.name ?? 'Unknown',
                                                       style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[700]),
-                                                    );
-                                                  },
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ),
 

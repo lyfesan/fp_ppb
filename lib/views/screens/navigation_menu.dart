@@ -30,7 +30,7 @@ class NavigationMenu extends StatelessWidget {
           selectedIndex: navController.selectedIndex.value,
           onDestinationSelected: navController.changeIndex,
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+            NavigationDestination(icon: Icon(Icons.house_outlined), label: "Home"),
             NavigationDestination(
               icon: Icon(Icons.speaker_notes_outlined),
               label: "Expenses",
@@ -39,7 +39,7 @@ class NavigationMenu extends StatelessWidget {
               icon: Icon(Icons.sticky_note_2_outlined),
               label: "Income",
             ),
-            NavigationDestination(icon: Icon(Icons.person), label: "Profile"),
+            NavigationDestination(icon: Icon(Icons.person_outline), label: "Profile"),
           ],
         ),
       ),

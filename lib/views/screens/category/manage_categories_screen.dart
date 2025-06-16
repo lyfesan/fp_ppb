@@ -33,11 +33,11 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   void _handleAddButtonPressed() {
     // _tabController.index == 0 corresponds to the "Income" tab.
     if (_tabController.index == 0) {
-      _incomeTabKey.currentState?.openAddOrUpdateDialog();
+      _incomeTabKey.currentState?.openAddOrUpdateScreen();
     }
     // _tabController.index == 1 corresponds to the "Expense" tab.
     else {
-      _expenseTabKey.currentState?.openAddOrUpdateDialog();
+      _expenseTabKey.currentState?.openAddOrUpdateScreen();
     }
   }
 

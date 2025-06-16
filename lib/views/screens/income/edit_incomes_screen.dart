@@ -36,6 +36,33 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
   final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   bool _isSaving = false;
 
+  String? _selectedIcon;
+
+  final List<String> _iconOptions = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +99,7 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
           setState(() => _isSaving = false);
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryIncome(user.uid, newCategoryName);
+        final newCategoryId = await firestoreService.addCategoryIncome(user.uid, newCategoryName, _selectedIcon!,);
         _selectedCategoryId = newCategoryId;
       }
 
@@ -83,7 +110,9 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
       }
 
       // --- CONVERSION LOGIC ON SAVE ---
-      final amountInActiveCurrency = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
+      final amountInActiveCurrency = double.tryParse(
+          _amountController.text.replaceAll('.', '').replaceAll(',', '')
+      ) ?? 0.0;
       final exchangeRate = _currencyService.exchangeRateNotifier.value;
       // Convert the input amount back to IDR for saving
       final amountInIdr = (exchangeRate > 0) ? amountInActiveCurrency / exchangeRate : 0.0;
@@ -103,6 +132,23 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  TextInputFormatter thousandsSeparatorInputFormatter() {
+    final formatter = NumberFormat.decimalPattern('id'); // uses '.' for thousands
+    return TextInputFormatter.withFunction((oldValue, newValue) {
+      final text = newValue.text.replaceAll('.', '').replaceAll(',', '');
+      if (text.isEmpty) return newValue.copyWith(text: '');
+
+      final number = int.tryParse(text);
+      if (number == null) return oldValue;
+
+      final newText = formatter.format(number);
+      return TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
+    });
   }
 
   void _pickDate() async {
@@ -148,15 +194,16 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
                 builder: (context, activeCurrency, child) {
                   return TextFormField(
                     controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Amount',
                       border: const OutlineInputBorder(),
                       prefixText: '${activeCurrency.symbol} ',
                     ),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*'))],
+                    inputFormatters: [thousandsSeparatorInputFormatter()],
                     validator: (value) {
-                      if (value == null || value.isEmpty || (double.tryParse(value.replaceAll(',', '')) ?? 0) <= 0) {
+                      final clean = value?.replaceAll('.', '').replaceAll(',', '') ?? '';
+                      if (clean.isEmpty || (double.tryParse(clean) ?? 0) <= 0) {
                         return 'Enter a valid amount';
                       }
                       return null;
@@ -188,15 +235,29 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
               // Category dropdown
               _buildCategoryDropdown(),
 
-              if (_isAddingNewCategory)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: TextFormField(
-                    controller: _newCategoryController,
-                    decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
-                    validator: (v) => _isAddingNewCategory && (v == null || v.trim().isEmpty) ? 'Please enter a category name' : null,
-                  ),
+              if (_isAddingNewCategory) ...[
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedIcon,
+                  decoration: const InputDecoration(labelText: 'Select Icon', border: OutlineInputBorder()),
+                  items: _iconOptions.map((iconName) {
+                    return DropdownMenuItem(
+                      value: iconName,
+                      child: Row(
+                        children: [
+                          Image.asset('assets/icons/$iconName', width: 24, height: 24),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedIcon = val),
+                  validator: (v) => v == null ? 'Please select an icon' : null,
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Date picker
