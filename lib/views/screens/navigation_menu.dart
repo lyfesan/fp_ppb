@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fp_ppb/views/screens/profile/profile_page.dart';
 import 'package:get/get.dart';
-
 import 'expenses/expenses_screen.dart';
-import 'category/category_expense_screen.dart';
-import 'category/category_income_screen.dart';
 import 'income/incomes_screen.dart';
 import 'home_screen.dart';
 

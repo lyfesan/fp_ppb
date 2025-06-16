@@ -20,8 +20,6 @@ abstract final class AppTheme {
   static ThemeData light = FlexThemeData.light(
     // Using FlexColorScheme built-in FlexScheme enum based colors
     scheme: FlexScheme.shadYellow,
-    // Surface color adjustments.
-    surfaceTint: const Color(0xFFFFD000),
     // Component theme configurations for light mode.
     subThemesData: const FlexSubThemesData(
       interactionEffects: true,
@@ -34,7 +32,6 @@ abstract final class AppTheme {
     ),
     // ColorScheme seed generation configuration for light mode.
     keyColors: const FlexKeyColors(
-      keepPrimary: true,
     ),
     // Direct ThemeData properties.
     visualDensity: FlexColorScheme.comfortablePlatformDensity,
