@@ -8,8 +8,8 @@ import '../models/expense.dart';
 import '../models/income.dart';
 
 class FirestoreService {
-  List<String> initIncomeCategories = PredefinedData.incomeCategories;
-  List<String> initExpenseCategories = PredefinedData.expenseCategories;
+  List<Map<String, String>> initIncomeCategories = PredefinedData.incomeCategories;
+  List<Map<String, String>> initExpenseCategories = PredefinedData.expenseCategories;
   List<String> initFinanceAccount = PredefinedData.financeAccount;
   final CollectionReference<Map<String, dynamic>> usersCollection =
   FirebaseFirestore.instance.collection('users');
@@ -50,12 +50,20 @@ class FirestoreService {
         addFinanceAccount(newUser.id, item);
       }
 
-      for(String item in initIncomeCategories) {
-        addCategoryIncome(newUser.id, item);
+      for (final category in initIncomeCategories) {
+        await addCategoryIncome(
+          newUser.id,
+          category['name'] ?? '',
+          category['icon'] ?? '',
+        );
       }
 
-      for(String item in initExpenseCategories) {
-        addCategoryExpense(newUser.id, item);
+      for (final category in initExpenseCategories) {
+        await addCategoryExpense(
+          newUser.id,
+          category['name'] ?? '',
+          category['icon'] ?? '',
+        );
       }
 
       if (kDebugMode) {
@@ -216,11 +224,11 @@ class FirestoreService {
         .delete();
   }
 
-  Future<String> addCategoryExpense(String userId, String name) async {
+  Future<String> addCategoryExpense(String userId, String name, String icon) async {
     final docRef = await usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
-        .add({'name': name, 'timestamp': Timestamp.now()});
+        .add({'name': name, 'icon': icon, 'timestamp': Timestamp.now()});
 
     return docRef.id; // return the newly created doc's ID
   }
@@ -239,12 +247,13 @@ class FirestoreService {
       String userId,
       String docID,
       String newName,
+      String icon
       ) {
     return usersCollection
         .doc(userId)
         .collection('ExpenseCategory')
         .doc(docID)
-        .update({'name': newName, 'timestamp': Timestamp.now()});
+        .update({'name': newName, 'icon': icon, 'timestamp': Timestamp.now()});
   }
 
   Future<List<Expense>> checkCategoryExpense(
@@ -298,11 +307,11 @@ class FirestoreService {
         .delete();
   }
 
-  Future<String> addCategoryIncome(String userId, String name) async {
+  Future<String> addCategoryIncome(String userId, String name, String icon) async {
     final docRef = await usersCollection
         .doc(userId)
         .collection('IncomeCategory')
-        .add({'name': name, 'timestamp': Timestamp.now()});
+        .add({'name': name, 'icon': icon, 'timestamp': Timestamp.now()});
 
     return docRef.id;
   }
@@ -321,12 +330,13 @@ class FirestoreService {
       String userId,
       String docID,
       String newName,
+      String icon
       ) {
     return usersCollection
         .doc(userId)
         .collection('IncomeCategory')
         .doc(docID)
-        .update({'name': newName, 'timestamp': Timestamp.now()});
+        .update({'name': newName, 'icon': icon, 'timestamp': Timestamp.now()});
   }
 
   Future<void> deleteCategoryIncome(String userId, String docID) {

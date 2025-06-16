@@ -4,6 +4,8 @@ import 'package:fp_ppb/models/expense.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 
+import 'category_form_screen.dart';
+
 class ExpenseCategoryTab extends StatefulWidget {
   const ExpenseCategoryTab({super.key});
 
@@ -15,34 +17,59 @@ class ExpenseCategoryTab extends StatefulWidget {
 class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _textController = TextEditingController();
+  String _selectedIcon = 'money.png';
+
+  // List of available icons
+  final List<String> _availableIcons = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
 
   /// Opens a dialog to either add a new category or update an existing one.
-  void openAddOrUpdateDialog({String? docID, String? currentName}) {
-    _textController.text = currentName ?? '';
+  void openAddOrUpdateScreen({String? docID, String? currentName, String? currentIcon}) {
     final isUpdating = docID != null;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isUpdating ? 'Update Category' : 'Add New Category'),
-        content: TextFormField(
-          controller: _textController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Category Name',
-            hintText: 'e.g., Groceries',
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryFormScreen(
+          initialName: currentName,
+          initialIcon: currentIcon,
+          isUpdate: isUpdating,
+          onSubmit: (name, icon) async {
+            final userId = FirebaseAuthService.currentUser!.uid;
+
+            if (isUpdating) {
+              await _firestoreService.updateCategoryExpense(userId, docID!, name, icon);
+            } else {
+              await _firestoreService.addCategoryExpense(userId, name, icon);
+            }
+          },
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => _submitCategory(docID: docID),
-            child: Text(isUpdating ? 'Update' : 'Add'),
-          ),
-        ],
       ),
-    ).then((_) => _textController.clear());
+    );
   }
+
 
   /// Handles the submission logic for adding or updating a category.
   void _submitCategory({String? docID}) {
@@ -51,9 +78,9 @@ class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
 
     final userId = FirebaseAuthService.currentUser!.uid;
     if (docID == null) {
-      _firestoreService.addCategoryExpense(userId, name);
+      _firestoreService.addCategoryExpense(userId, name, _selectedIcon);
     } else {
-      _firestoreService.updateCategoryExpense(userId, docID, name);
+      _firestoreService.updateCategoryExpense(userId, docID, name, _selectedIcon);
     }
 
     Navigator.pop(context);
@@ -166,7 +193,12 @@ class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
             final categoryName = data['name'] as String? ?? 'No Name';
 
             return ListTile(
-              leading: const Icon(Icons.chevron_right),
+              leading: Image.asset(
+                'assets/icons/${data['icon']}',
+                width: 40,
+                height: 40,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+              ),
               title: Text(categoryName),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -174,7 +206,11 @@ class ExpenseCategoryTabState extends State<ExpenseCategoryTab> {
                   IconButton(
                     icon: const Icon(Icons.edit), //color: Colors.blueAccent),
                     tooltip: 'Edit Category',
-                    onPressed: () => openAddOrUpdateDialog(docID: docID, currentName: categoryName),
+                    onPressed: () => openAddOrUpdateScreen(
+                      docID: docID,
+                      currentName: categoryName,
+                      currentIcon: data['icon'],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),

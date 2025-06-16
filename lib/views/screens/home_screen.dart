@@ -372,7 +372,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Add a divider before every item, including the first
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.category_outlined),
+                      leading: Image.asset(
+                        'assets/icons/${snapshot.data?.icon ?? 'money.png'}',
+                        width: 32,
+                        height: 32,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                      ),
                       title: Text(categoryName),
                       trailing: Text(
                         '- ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',
@@ -420,7 +425,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Add a divider before every item, including the first
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.category_outlined),
+                      leading: Image.asset(
+                        'assets/icons/${snapshot.data?.icon ?? 'money.png'}',
+                        width: 32,
+                        height: 32,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                      ),
                       title: Text(categoryName),
                       trailing: Text(
                         '+ ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',

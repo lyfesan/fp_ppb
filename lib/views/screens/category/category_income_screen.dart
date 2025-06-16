@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import '../../../services/firebase_auth_service.dart';
+import 'category_form_screen.dart';
 
 class CategoryIncomeScreen extends StatefulWidget {
   const CategoryIncomeScreen({super.key});
@@ -15,57 +16,54 @@ class _CategoryIncomeScreenState extends State<CategoryIncomeScreen> {
   final FirestoreService firestoreService = FirestoreService();
   final TextEditingController textController = TextEditingController();
 
-  void openCategoryBox({String? docID, String? existingText}) {
-    textController.text = existingText ?? '';
+  // List of available icons
+  final List<String> _availableIcons = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
 
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(docID == null ? 'Add Category' : 'Update Category'),
-            content: Form(
-              child: TextFormField(
-                controller: textController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Enter your category here',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter some text';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  final text = textController.text.trim();
-                  Navigator.pop(context);
+  void openCategoryBox({String? docID, String? existingText, String? existingIcon}) {
+    final isUpdating = docID != null;
 
-                  if (docID == null) {
-                    firestoreService.addCategoryIncome(
-                      FirebaseAuthService.currentUser!.uid,
-                      text,
-                    );
-                  } else {
-                    firestoreService.updateCategoryIncome(
-                      FirebaseAuthService.currentUser!.uid,
-                      docID,
-                      text,
-                    );
-                  }
-                  textController.clear();
-                },
-                child: Text(docID == null ? 'Add' : 'Update'),
-              ),
-            ],
-          ),
-    ).then((_) {
-      // Reset jika user tap di luar dialog
-      textController.clear();
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryFormScreen(
+          initialName: existingText,
+          initialIcon: existingIcon,
+          isUpdate: isUpdating,
+          onSubmit: (name, icon) async {
+            final userId = FirebaseAuthService.currentUser!.uid;
+
+            if (isUpdating) {
+              await firestoreService.updateCategoryIncome(userId, docID!, name, icon);
+            } else {
+              await firestoreService.addCategoryIncome(userId, name, icon);
+            }
+          },
+        ),
+      ),
+    );
   }
 
   @override

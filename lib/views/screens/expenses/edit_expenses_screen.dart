@@ -36,6 +36,33 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   bool _isSaving = false;
 
+  String? _selectedIcon;
+
+  final List<String> _iconOptions = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -67,12 +94,18 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
 
       if (_isAddingNewCategory) {
         final newCategoryName = _newCategoryController.text.trim();
-        if (newCategoryName.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a category name')));
+        if (newCategoryName.isEmpty || _selectedIcon == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please enter a category name and select an icon')));
           setState(() => _isSaving = false);
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryExpense(user.uid, newCategoryName);
+
+        final newCategoryId = await firestoreService.addCategoryExpense(
+          user.uid,
+          newCategoryName,
+          _selectedIcon!, // Add this
+        );
         _selectedCategoryId = newCategoryId;
       }
 
@@ -208,15 +241,49 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               // Category Dropdown
               _buildCategoryDropdown(),
 
-              if (_isAddingNewCategory)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: TextFormField(
-                    controller: _newCategoryController,
-                    decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
-                    validator: (v) => _isAddingNewCategory && (v == null || v.trim().isEmpty) ? 'Please enter a category name' : null,
+              if (_isAddingNewCategory) ...[
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                const Text('Choose an icon:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 150, // Adjust height to your design
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.horizontal,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: _iconOptions.length,
+                    itemBuilder: (context, index) {
+                      final iconName = _iconOptions[index];
+                      final isSelected = iconName == _selectedIcon;
+
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedIcon = iconName),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isSelected ? Colors.blueAccent : Colors.grey.shade300,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                          ),
+                          child: Image.asset('assets/icons/$iconName', width: 40, height: 40),
+                        ),
+                      );
+                    },
                   ),
                 ),
+              ],
               const SizedBox(height: 16),
 
               // Date picker
