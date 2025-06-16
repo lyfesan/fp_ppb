@@ -61,7 +61,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
 
       // --- CONVERSION LOGIC ON SAVE ---
-      final amountInActiveCurrency = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
+      final amountInActiveCurrency = double.tryParse(
+          _amountController.text.replaceAll('.', '').replaceAll(',', '')
+      ) ?? 0.0;
       final exchangeRate = _currencyService.exchangeRateNotifier.value;
       // Convert the input amount back to IDR for saving
       final amountInIdr = (exchangeRate > 0) ? amountInActiveCurrency / exchangeRate : 0.0;
@@ -84,6 +86,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  TextInputFormatter thousandsSeparatorInputFormatter() {
+    final formatter = NumberFormat.decimalPattern('id'); // uses '.' for thousands
+    return TextInputFormatter.withFunction((oldValue, newValue) {
+      final text = newValue.text.replaceAll('.', '').replaceAll(',', '');
+      if (text.isEmpty) return newValue.copyWith(text: '');
+
+      final number = int.tryParse(text);
+      if (number == null) return oldValue;
+
+      final newText = formatter.format(number);
+      return TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
+    });
   }
 
   void _pickDate() async {
@@ -128,15 +147,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 builder: (context, activeCurrency, child) {
                   return TextFormField(
                     controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Amount',
                       border: const OutlineInputBorder(),
                       prefixText: '${activeCurrency.symbol} ',
                     ),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*'))],
+                    inputFormatters: [thousandsSeparatorInputFormatter()],
                     validator: (value) {
-                      if (value == null || value.isEmpty || (double.tryParse(value.replaceAll(',', '')) ?? 0) <= 0) {
+                      final clean = value?.replaceAll('.', '').replaceAll(',', '') ?? '';
+                      if (clean.isEmpty || (double.tryParse(clean) ?? 0) <= 0) {
                         return 'Enter a valid amount';
                       }
                       return null;
