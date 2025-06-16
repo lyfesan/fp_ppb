@@ -1,20 +1,20 @@
 import '../../models/currency_model.dart';
 
 class PredefinedData {
-  static final List<String> incomeCategories = [
-    "Salary",
-    "Investment",
-    "Gift",
-    "Bonus",
-    "Other",
+  static const List<Map<String, String>> incomeCategories = [
+    {"name": "Salary", "icon": "money.png"},
+    {"name": "Investment", "icon": "money.png"},
+    {"name": "Gift", "icon": "gift.png"},
+    {"name": "Bonus", "icon": "bonus.png"},
+    {"name": "Other", "icon": "duck.png"},
   ];
 
-  static final List<String> expenseCategories = [
-    "Food and Drink",
-    "Transportation",
-    "Bills and Utility",
-    "Entertainment",
-    "Other",
+  static const List<Map<String, String>> expenseCategories = [
+    {"name": "Food and Drink", "icon": "food.png"},
+    {"name": "Transportation", "icon": "shopping.png"},
+    {"name": "Bills and Utility", "icon": "bills.png"},
+    {"name": "Entertainment", "icon": "popcorn.png"},
+    {"name": "Other", "icon": "duck.png"},
   ];
 
   static final List<String> financeAccount = [

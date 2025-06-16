@@ -36,6 +36,33 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
   final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   bool _isSaving = false;
 
+  String? _selectedIcon;
+
+  final List<String> _iconOptions = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +99,7 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
           setState(() => _isSaving = false);
           return;
         }
-        final newCategoryId = await firestoreService.addCategoryIncome(user.uid, newCategoryName);
+        final newCategoryId = await firestoreService.addCategoryIncome(user.uid, newCategoryName, _selectedIcon!,);
         _selectedCategoryId = newCategoryId;
       }
 
@@ -208,15 +235,29 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
               // Category dropdown
               _buildCategoryDropdown(),
 
-              if (_isAddingNewCategory)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: TextFormField(
-                    controller: _newCategoryController,
-                    decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
-                    validator: (v) => _isAddingNewCategory && (v == null || v.trim().isEmpty) ? 'Please enter a category name' : null,
-                  ),
+              if (_isAddingNewCategory) ...[
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedIcon,
+                  decoration: const InputDecoration(labelText: 'Select Icon', border: OutlineInputBorder()),
+                  items: _iconOptions.map((iconName) {
+                    return DropdownMenuItem(
+                      value: iconName,
+                      child: Row(
+                        children: [
+                          Image.asset('assets/icons/$iconName', width: 24, height: 24),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedIcon = val),
+                  validator: (v) => v == null ? 'Please select an icon' : null,
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Date picker

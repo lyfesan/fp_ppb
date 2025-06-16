@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
 import 'package:fp_ppb/services/firestore_service.dart';
 
+import 'category_form_screen.dart';
+
 class IncomeCategoryTab extends StatefulWidget {
   const IncomeCategoryTab({super.key});
 
@@ -14,49 +16,68 @@ class IncomeCategoryTab extends StatefulWidget {
 class IncomeCategoryTabState extends State<IncomeCategoryTab> {
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _textController = TextEditingController();
+  String _selectedIcon = 'money.png';
 
-  void openAddOrUpdateDialog({String? docID, String? currentName}) {
-    _textController.text = currentName ?? '';
+  // List of available icons
+  final List<String> _availableIcons = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
+
+  void openAddOrUpdateScreen({String? docID, String? currentName, String? currentIcon}) {
     final isUpdating = docID != null;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isUpdating ? 'Update Category' : 'Add New Category'),
-        content: TextFormField(
-          controller: _textController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Category Name',
-            hintText: 'e.g., Salary',
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryFormScreen(
+          initialName: currentName,
+          initialIcon: currentIcon,
+          isUpdate: isUpdating,
+          onSubmit: (name, icon) async {
+            final userId = FirebaseAuthService.currentUser!.uid;
+            if (isUpdating) {
+              await _firestoreService.updateCategoryIncome(userId, docID!, name, icon);
+            } else {
+              await _firestoreService.addCategoryIncome(userId, name, icon);
+            }
+          },
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              _submitCategory(docID: docID);
-            },
-            child: Text(isUpdating ? 'Update' : 'Add'),
-          ),
-        ],
       ),
-    ).then((_) => _textController.clear());
+    );
   }
 
   /// Handles the submission logic for adding or updating a category.
   void _submitCategory({String? docID}) {
     final name = _textController.text.trim();
-    if (name.isEmpty) return; // Prevent empty category names
+    if (name.isEmpty) return;
 
     final userId = FirebaseAuthService.currentUser!.uid;
 
     if (docID == null) {
-      // Add new category
-      _firestoreService.addCategoryIncome(userId, name);
+      _firestoreService.addCategoryIncome(userId, name, _selectedIcon);
     } else {
-      // Update existing category
-      _firestoreService.updateCategoryIncome(userId, docID, name);
+      _firestoreService.updateCategoryIncome(userId, docID, name, _selectedIcon);
     }
 
     Navigator.pop(context);
@@ -122,7 +143,12 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
             final categoryName = data['name'] as String? ?? 'No Name';
 
             return ListTile(
-              leading: const Icon(Icons.chevron_right),
+              leading: Image.asset(
+                'assets/icons/${data['icon']}',
+                width: 40,
+                height: 40,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+              ),
               title: Text(categoryName),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -130,7 +156,11 @@ class IncomeCategoryTabState extends State<IncomeCategoryTab> {
                   IconButton(
                     icon: const Icon(Icons.edit), //color: Colors.blueAccent),
                     tooltip: 'Edit Category',
-                    onPressed: () => openAddOrUpdateDialog(docID: docID, currentName: categoryName),
+                    onPressed: () => openAddOrUpdateScreen(
+                      docID: docID,
+                      currentName: categoryName,
+                      currentIcon: data['icon'],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
