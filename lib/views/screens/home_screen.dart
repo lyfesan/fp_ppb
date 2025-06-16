@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fp_ppb/models/account.dart';
@@ -62,29 +63,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Fetches top categories, which are independent of the selected account
-  void fetchTopCategories(String userId) {
+  void fetchTopCategories(String userId) async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0);
 
     firestoreService
-        .getExpensesByCategory(
-        userId: userId, startDate: startOfMonth, endDate: endOfMonth)
-        .listen((categoryList) {
+        .getExpensesByCategory(userId: userId, startDate: startOfMonth, endDate: endOfMonth)
+        .listen((categoryList) async {
+      List<Map<String, dynamic>> updatedList = [];
+
+      for (var category in categoryList.take(3)) {
+        final categoryModel = await firestoreService.getExpenseCategoryById(userId, category['categoryId']);
+        updatedList.add({
+          'categoryId': category['categoryId'],
+          'total': category['total'],
+          'name': categoryModel?.name ?? 'Unknown',
+        });
+      }
+
       if (mounted) {
-        setState(() => topExpenseCategories = categoryList.take(3).toList());
+        setState(() {
+          topExpenseCategories = updatedList;
+        });
       }
     });
 
     firestoreService
-        .getIncomesByCategory(
-        userId: userId, startDate: startOfMonth, endDate: endOfMonth)
-        .listen((categoryList) {
+        .getIncomesByCategory(userId: userId, startDate: startOfMonth, endDate: endOfMonth)
+        .listen((categoryList) async {
+      List<Map<String, dynamic>> updatedList = [];
+
+      for (var category in categoryList.take(3)) {
+        final categoryModel = await firestoreService.getIncomeCategoryById(userId, category['categoryId']);
+        updatedList.add({
+          'categoryId': category['categoryId'],
+          'total': category['total'],
+          'name': categoryModel?.name ?? 'Unknown',
+        });
+      }
+
       if (mounted) {
-        setState(() => topIncomeCategories = categoryList.take(3).toList());
+        setState(() {
+          topIncomeCategories = updatedList;
+        });
       }
     });
   }
+
 
   String formatCurrency(
       double value, Currency activeCurrency, double exchangeRate) {
@@ -213,14 +239,119 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopCategories(Currency activeCurrency, double exchangeRate) {
+  Widget _buildPieChart(List<Map<String, dynamic>> categories, String title, List<Color> chartColors,) {
+    if (categories.isEmpty) {
+      return const Center(child: Text("No data available"));
+    }
+
+    double total = categories.fold(0.0, (sum, item) => sum + (item['total'] as double));
+
+    List<PieChartSectionData> sections = [];
+
+    for (int i = 0; i < categories.length; i++) {
+      final category = categories[i];
+      final value = category['total'] as double;
+      final name = category['name'] ?? 'Unknown';
+      final color = chartColors[i % chartColors.length];
+
+      final percentage = (value / total) * 100;
+
+      sections.add(PieChartSectionData(
+        color: color,
+        title: '$name\n${percentage.toStringAsFixed(1)}%',
+        value: value,
+        radius: 80,
+        titleStyle: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+        ),
+      ));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Top 3 Expense Categories (This Month)',
-            style: Theme.of(context).textTheme.titleMedium),
+        // Text(title, style: Theme.of(context).textTheme.titleMedium),
+        // const SizedBox(height: 16),
+        AspectRatio(
+          aspectRatio: 1,
+          child: PieChart(
+            PieChartData(
+              sections: sections,
+              borderData: FlBorderData(show: false),
+              sectionsSpace: 0,
+              centerSpaceRadius: 40,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        // Horizontal legend
+        Center(
+          child: Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: List.generate(categories.length, (index) {
+              final name = categories[index]['name'] ?? 'Unknown';
+              final color = chartColors[index % chartColors.length];
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(name, style: const TextStyle(fontSize: 14)),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopCategories(Currency activeCurrency, double exchangeRate) {
+    final List<Color> expenseChartColors = [
+      Colors.red.shade300,       // softer red
+      Colors.deepOrange.shade300,
+      Colors.amber.shade300,
+      Colors.greenAccent,
+      Colors.brown.shade300,
+      Colors.deepPurple.shade300,
+      Colors.lightBlueAccent,
+    ];
+
+    final List<Color> incomeChartColors = [
+      Colors.lightBlueAccent,
+      Colors.greenAccent,
+      Colors.amber.shade300,
+      Colors.deepPurple.shade300,
+      Colors.red.shade300,       // softer red
+      Colors.deepOrange.shade300,
+      Colors.brown.shade300,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top 3 Expense Categories (This Month)',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        _buildPieChart(topExpenseCategories, '', expenseChartColors),
+        const SizedBox(height: 16),
         ListView.builder(
-          padding: EdgeInsets.zero, // UPDATED: Removed default padding
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: topExpenseCategories.length,
@@ -230,15 +361,29 @@ class _HomeScreenState extends State<HomeScreen> {
               future: firestoreService.getExpenseCategoryById(
                   _auth.currentUser!.uid, category['categoryId']),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const ListTile(title: Text("..."));
+                if (!snapshot.hasData) {
+                  return const ListTile(title: Text("..."));
+                }
+
                 final categoryName = snapshot.data!.name;
-                return ListTile(
-                  leading: const Icon(Icons.category_outlined),
-                  title: Text(categoryName),
-                  trailing: Text(
-                    '- ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',
-                    style: const TextStyle(fontSize: 15, color: Colors.red, fontWeight: FontWeight.w600),
-                  ),
+
+                return Column(
+                  children: [
+                    // Add a divider before every item, including the first
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.category_outlined),
+                      title: Text(categoryName),
+                      trailing: Text(
+                        '- ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             );
@@ -246,9 +391,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         Text('Top 3 Income Categories (This Month)',
-            style: Theme.of(context).textTheme.titleMedium),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        _buildPieChart(topIncomeCategories, '', incomeChartColors),
+        const SizedBox(height: 16),
         ListView.builder(
-          padding: EdgeInsets.zero, // UPDATED: Removed default padding
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: topIncomeCategories.length,
@@ -258,15 +409,29 @@ class _HomeScreenState extends State<HomeScreen> {
               future: firestoreService.getIncomeCategoryById(
                   _auth.currentUser!.uid, category['categoryId']),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const ListTile(title: Text("..."));
+                if (!snapshot.hasData) {
+                  return const ListTile(title: Text("..."));
+                }
+
                 final categoryName = snapshot.data!.name;
-                return ListTile(
-                  leading: const Icon(Icons.category_outlined),
-                  title: Text(categoryName),
-                  trailing: Text(
-                    '+ ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',
-                    style: const TextStyle(fontSize: 15, color: Colors.green, fontWeight: FontWeight.w600),
-                  ),
+
+                return Column(
+                  children: [
+                    // Add a divider before every item, including the first
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.category_outlined),
+                      title: Text(categoryName),
+                      trailing: Text(
+                        '+ ${formatCurrency(category['total'], activeCurrency, exchangeRate)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             );
@@ -364,7 +529,18 @@ class _BalanceCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(account.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              account.name,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, size: 40, color: Colors.grey[600]),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         formatCurrency(balance, activeCurrency, exchangeRate),
@@ -398,6 +574,7 @@ class _BalanceCard extends StatelessWidget {
                               ],
                             ),
                           ),
+                          const SizedBox(width: 15),
                           Expanded(
                             child: Row(
                               children: [
