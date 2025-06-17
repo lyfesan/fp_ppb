@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:fp_ppb/models/currency_model.dart';
 import 'package:fp_ppb/services/currency_exchange_service.dart';
+import 'package:fp_ppb/services/notification_service.dart';
+import 'package:intl/intl.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../models/app_user.dart';
 import '../../services/firestore_service.dart';
@@ -28,7 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final NavigationController navController = Get.find();
-  final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
+  final CurrencyExchangeService _currencyService =
+      CurrencyExchangeService.instance;
   final PageController _pageController = PageController();
   DateTime? _lastTimeBackButtonWasTapped;
 
@@ -39,11 +43,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    NotificationService.initializeNotification();
+    scheduleDailyNotification();
     _auth.authStateChanges().listen((user) {
       if (user != null) {
         fetchTopCategories(user.uid);
       }
     });
+  }
+
+  Future<void> scheduleDailyNotification() async {
+    String localTimeZone =
+        await AwesomeNotifications().getLocalTimeZoneIdentifier();
+    await NotificationService.createNotification(
+      id: 1,
+      title: 'Daily Reminder',
+      body: 'It\'s 9 PM! Time to check your finances.',
+      largeIcon: 'asset://assets/icons/logo_app.png',
+      scheduled: true,
+      schedule: NotificationCalendar(
+        hour: 21,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+        allowWhileIdle: true,
+        timeZone: localTimeZone,
+        repeats: true,
+      ),
+    );
   }
 
   @override
@@ -71,8 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final endOfMonth = DateTime(now.year, now.month + 1, 0);
 
     firestoreService
-        .getExpensesByCategory(userId: userId, startDate: startOfMonth, endDate: endOfMonth)
+        .getExpensesByCategory(
+          userId: userId,
+          startDate: startOfMonth,
+          endDate: endOfMonth,
+        )
         .listen((categoryList) async {
+
       List<Map<String, dynamic>> updatedList = [];
 
       for (var category in categoryList.take(5)) {
@@ -84,16 +116,23 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
 
-      if (mounted) {
-        setState(() {
-          topExpenseCategories = updatedList;
+
+          
+          if (mounted) {
+            setState(() {
+              topExpenseCategories = updatedList;
+            });
+          }
         });
-      }
-    });
 
     firestoreService
-        .getIncomesByCategory(userId: userId, startDate: startOfMonth, endDate: endOfMonth)
+        .getIncomesByCategory(
+          userId: userId,
+          startDate: startOfMonth,
+          endDate: endOfMonth,
+        )
         .listen((categoryList) async {
+
       List<Map<String, dynamic>> updatedList = [];
 
       for (var category in categoryList.take(5)) {
@@ -104,18 +143,20 @@ class _HomeScreenState extends State<HomeScreen> {
           'name': categoryModel?.name ?? 'Unknown',
         });
       }
-
-      if (mounted) {
-        setState(() {
-          topIncomeCategories = updatedList;
+          
+          if (mounted) {
+            setState(() {
+              topIncomeCategories = updatedList;
+            });
+          }
         });
-      }
-    });
   }
 
-
   String formatCurrency(
-      double value, Currency activeCurrency, double exchangeRate) {
+    double value,
+    Currency activeCurrency,
+    double exchangeRate,
+  ) {
     final convertedValue = value * exchangeRate;
     final int decimalDigits = activeCurrency.code == 'IDR' ? 0 : 2;
     final format = NumberFormat.currency(
@@ -194,12 +235,17 @@ class _HomeScreenState extends State<HomeScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Hello',
-                    style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Hello',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ],
@@ -225,9 +271,10 @@ class _HomeScreenState extends State<HomeScreen> {
           return const Center(child: Text("No financial accounts found."));
         }
 
-        accounts = snapshot.data!.docs
-            .map((doc) => AccountModel.fromFirestore(doc))
-            .toList();
+        accounts =
+            snapshot.data!.docs
+                .map((doc) => AccountModel.fromFirestore(doc))
+                .toList();
 
         return Column(
           children: [
@@ -264,12 +311,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPieChart(List<Map<String, dynamic>> categories, String title, List<Color> chartColors,) {
+  Widget _buildPieChart(
+    List<Map<String, dynamic>> categories,
+    String title,
+    List<Color> chartColors,
+  ) {
     if (categories.isEmpty) {
       return const Center(child: Text("No data available"));
     }
 
-    double total = categories.fold(0.0, (sum, item) => sum + (item['total'] as double));
+    double total = categories.fold(
+      0.0,
+      (sum, item) => sum + (item['total'] as double),
+    );
 
     List<PieChartSectionData> sections = [];
 
@@ -281,17 +335,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final percentage = (value / total) * 100;
 
-      sections.add(PieChartSectionData(
-        color: color,
-        title: '$name\n${percentage.toStringAsFixed(1)}%',
-        value: value,
-        radius: 80,
-        titleStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 10,
+      sections.add(
+        PieChartSectionData(
+          color: color,
+          title: '$name\n${percentage.toStringAsFixed(1)}%',
+          value: value,
+          radius: 80,
+          titleStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
         ),
-      ));
+      );
     }
 
     return Column(
@@ -345,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCategories(Currency activeCurrency, double exchangeRate) {
     final List<Color> expenseChartColors = [
-      Colors.red.shade300,       // softer red
+      Colors.red.shade300, // softer red
       Colors.deepOrange.shade300,
       Colors.amber.shade300,
       Colors.greenAccent,
@@ -359,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Colors.greenAccent,
       Colors.amber.shade300,
       Colors.deepPurple.shade300,
-      Colors.red.shade300,       // softer red
+      Colors.red.shade300, // softer red
       Colors.deepOrange.shade300,
       Colors.brown.shade300,
     ];
@@ -384,7 +440,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final category = topExpenseCategories[index];
             return FutureBuilder<CategoryModel?>(
               future: firestoreService.getExpenseCategoryById(
-                  _auth.currentUser!.uid, category['categoryId']),
+                _auth.currentUser!.uid,
+                category['categoryId'],
+              ),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const ListTile(title: Text("..."));
@@ -401,7 +459,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         'assets/icons/${snapshot.data?.icon ?? 'money.png'}',
                         width: 32,
                         height: 32,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                        errorBuilder:
+                            (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported),
                       ),
                       title: Text(categoryName),
                       trailing: Text(
@@ -421,6 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         Text('Top 5 Income Categories (This Month)',
+
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -437,7 +498,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final category = topIncomeCategories[index];
             return FutureBuilder<CategoryModel?>(
               future: firestoreService.getIncomeCategoryById(
-                  _auth.currentUser!.uid, category['categoryId']),
+                _auth.currentUser!.uid,
+                category['categoryId'],
+              ),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const ListTile(title: Text("..."));
@@ -454,7 +517,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         'assets/icons/${snapshot.data?.icon ?? 'money.png'}',
                         width: 32,
                         height: 32,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                        errorBuilder:
+                            (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported),
                       ),
                       title: Text(categoryName),
                       trailing: Text(
@@ -493,7 +558,10 @@ class _BalanceCard extends StatelessWidget {
   });
 
   String formatCurrency(
-      double value, Currency activeCurrency, double exchangeRate) {
+    double value,
+    Currency activeCurrency,
+    double exchangeRate,
+  ) {
     final convertedValue = value * exchangeRate;
     final int decimalDigits = activeCurrency.code == 'IDR' ? 0 : 2;
     final format = NumberFormat.currency(
@@ -508,9 +576,17 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // These streams fetch all transactions for THIS specific account
     final expensesStream = firestoreService.getExpensesByAccount(
-        userId: userId, accountId: account.id, startDate: DateTime(2000), endDate: DateTime(2100));
+      userId: userId,
+      accountId: account.id,
+      startDate: DateTime(2000),
+      endDate: DateTime(2100),
+    );
     final incomeStream = firestoreService.getIncomeByAccount(
-        userId: userId, accountId: account.id, startDate: DateTime(2000), endDate: DateTime(2100));
+      userId: userId,
+      accountId: account.id,
+      startDate: DateTime(2000),
+      endDate: DateTime(2100),
+    );
 
     // Use nested StreamBuilders to combine streams without Rx
     return StreamBuilder<List<Expense>>(
@@ -520,15 +596,23 @@ class _BalanceCard extends StatelessWidget {
           stream: incomeStream,
           builder: (context, incomeSnapshot) {
             if (!expenseSnapshot.hasData || !incomeSnapshot.hasData) {
-              return const Card(child: Center(child: CircularProgressIndicator()));
+              return const Card(
+                child: Center(child: CircularProgressIndicator()),
+              );
             }
 
             final List<Expense> allExpenses = expenseSnapshot.data ?? [];
             final List<Income> allIncomes = incomeSnapshot.data ?? [];
 
             // Calculate total balance
-            final totalExpenses = allExpenses.fold(0.0, (sum, item) => sum + item.amount);
-            final totalIncomes = allIncomes.fold(0.0, (sum, item) => sum + item.amount);
+            final totalExpenses = allExpenses.fold(
+              0.0,
+              (sum, item) => sum + item.amount,
+            );
+            final totalIncomes = allIncomes.fold(
+              0.0,
+              (sum, item) => sum + item.amount,
+            );
             final balance = totalIncomes - totalExpenses;
 
             // Calculate monthly totals
@@ -537,14 +621,23 @@ class _BalanceCard extends StatelessWidget {
             final endOfMonth = DateTime(now.year, now.month + 1, 0);
 
             final monthlyExpenses = allExpenses
-                .where((e) => e.date.isAfter(startOfMonth) && e.date.isBefore(endOfMonth))
+                .where(
+                  (e) =>
+                      e.date.isAfter(startOfMonth) &&
+                      e.date.isBefore(endOfMonth),
+                )
                 .fold(0.0, (sum, item) => sum + item.amount);
 
             final monthlyIncomes = allIncomes
-                .where((i) => i.date.isAfter(startOfMonth) && i.date.isBefore(endOfMonth))
+                .where(
+                  (i) =>
+                      i.date.isAfter(startOfMonth) &&
+                      i.date.isBefore(endOfMonth),
+                )
                 .fold(0.0, (sum, item) => sum + item.amount);
 
-            return GestureDetector( // UPDATED: Added GestureDetector for tap functionality
+            return GestureDetector(
+              // UPDATED: Added GestureDetector for tap functionality
               onTap: () {
                 Navigator.push(
                   context,
@@ -556,8 +649,9 @@ class _BalanceCard extends StatelessWidget {
               child: Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300)),
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -569,18 +663,27 @@ class _BalanceCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               account.name,
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Icon(Icons.chevron_right, size: 40, color: Colors.grey[600]),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 40,
+                            color: Colors.grey[600],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         formatCurrency(balance, activeCurrency, exchangeRate),
                         style: const TextStyle(
-                            fontSize: 32, fontWeight: FontWeight.bold),
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const Spacer(),
                       Row(
@@ -588,18 +691,34 @@ class _BalanceCard extends StatelessWidget {
                           Expanded(
                             child: Row(
                               children: [
-                                Image.asset("assets/icons/expenses.png", width: 40, height: 40),
+                                Image.asset(
+                                  "assets/icons/expenses.png",
+                                  width: 40,
+                                  height: 40,
+                                ),
                                 const SizedBox(width: 15),
                                 Flexible(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Expenses', style: TextStyle(fontSize: 16)),
+                                      const Text(
+                                        'Expenses',
+                                        style: TextStyle(fontSize: 16),
+                                      ),
                                       FittedBox(
                                         fit: BoxFit.scaleDown,
                                         child: Text(
-                                          formatCurrency(monthlyExpenses, activeCurrency, exchangeRate),
-                                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red),
+                                          formatCurrency(
+                                            monthlyExpenses,
+                                            activeCurrency,
+                                            exchangeRate,
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
                                           maxLines: 1,
                                         ),
                                       ),
@@ -613,18 +732,34 @@ class _BalanceCard extends StatelessWidget {
                           Expanded(
                             child: Row(
                               children: [
-                                Image.asset("assets/icons/income.png", width: 40, height: 40),
+                                Image.asset(
+                                  "assets/icons/income.png",
+                                  width: 40,
+                                  height: 40,
+                                ),
                                 const SizedBox(width: 15),
                                 Flexible(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Income', style: TextStyle(fontSize: 16)),
+                                      const Text(
+                                        'Income',
+                                        style: TextStyle(fontSize: 16),
+                                      ),
                                       FittedBox(
                                         fit: BoxFit.scaleDown,
                                         child: Text(
-                                          formatCurrency(monthlyIncomes, activeCurrency, exchangeRate),
-                                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+                                          formatCurrency(
+                                            monthlyIncomes,
+                                            activeCurrency,
+                                            exchangeRate,
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                          ),
                                           maxLines: 1,
                                         ),
                                       ),
