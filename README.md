@@ -7,13 +7,14 @@
 
 ## Table of Contents
 
-1. [Project Overview](#1-project-overview)
-2. [Screenshots](#2-screenshots)
-3. [Installation](#3-installation)
-   - [Prerequisites](#prerequisites)
-   - [Clone the Repository](#clone-the-repository)
-   - [Run the Application](#run-the-application)
-4. [Team](#4-team)
+- [Table of Contents](#table-of-contents)
+- [1. Project Overview](#1-project-overview)
+- [2. Screenshots](#2-screenshots)
+- [3. Installation](#3-installation)
+  - [Prerequisites](#prerequisites)
+  - [Clone the Repository](#clone-the-repository)
+  - [Run the Application](#run-the-application)
+- [4. Team](#4-team)
 
 ---
 
@@ -30,28 +31,28 @@ MoneySense is a mobile solution for personal financial management. Its main feat
 
 Here's a look at the MoneySense app:
 
-<img src="https://github.com/user-attachments/assets/9291f7e3-992c-4bb0-a200-459a2da57a0d" width="200"/>
-<img src="https://github.com/user-attachments/assets/4d23259f-b4c9-4681-9e62-316d4e6cf1f9" width="200"/>
-<img src="https://github.com/user-attachments/assets/454a0113-8ffa-4fcd-b5e7-b8892be8b19c" width="200"/>
-<img src="https://github.com/user-attachments/assets/7ad75ced-b0ff-4e80-8cb7-5ef5b8996ac3" width="200"/>
+<img src="assets/showcase-app-1.png" width="200"/>
+<img src="assets/showcase-app-2.png" width="200"/>
+<img src="assets/showcase-app-3.png" width="200"/>
+<img src="assets/showcase-app-4.png" width="200"/>
 
 
 ## 3. Installation
 
 ### Prerequisites
 
-Sebelum memulai, pastikan Anda telah menginstal:
+Before started, make sure you have installed:
 
 - [Flutter SDK 3.32.0](https://docs.flutter.dev/get-started/install/windows/mobile)
 - Git
-- Android Studio atau VS Code
-- Emulator
+- Android Studio or VS Code
+- Android Emulator
 
 ### Clone the Repository
 
 ```bash
 git clone https://github.com/lyfesan/fp_ppb.git
-cd moneysense
+cd fp_ppb
 ```
 ### Run the Application
 
@@ -69,16 +70,16 @@ flutter run
   - CRUD User 
   - CRUD Budget Account
   - Crashlytics
-  - API Curency
+  - API Currency
 
 - **Putu Indra Mahendra** – *5025221215*
   - CRUD Category Expenses
   - CRUD Category Income
   - CRUD Income
-  - Dasboard Home
+  - Dashboard Home
 
 - **Apta Rasendriya Wijaya** – *5025211139*
   - CRUD Expenses
   - CRUD Icon Category
-  - Dasboard Home
+  - Dashboard Home
   - Launcher Icon & Splash Screen
