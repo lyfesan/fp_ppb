@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .listen((categoryList) async {
       List<Map<String, dynamic>> updatedList = [];
 
-      for (var category in categoryList.take(3)) {
+      for (var category in categoryList.take(5)) {
         final categoryModel = await firestoreService.getExpenseCategoryById(userId, category['categoryId']);
         updatedList.add({
           'categoryId': category['categoryId'],
@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .listen((categoryList) async {
       List<Map<String, dynamic>> updatedList = [];
 
-      for (var category in categoryList.take(3)) {
+      for (var category in categoryList.take(5)) {
         final categoryModel = await firestoreService.getIncomeCategoryById(userId, category['categoryId']);
         updatedList.add({
           'categoryId': category['categoryId'],
@@ -367,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Top 3 Expense Categories (This Month)',
+          'Top 5 Expense Categories (This Month)',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -420,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        Text('Top 3 Income Categories (This Month)',
+        Text('Top 5 Income Categories (This Month)',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,
