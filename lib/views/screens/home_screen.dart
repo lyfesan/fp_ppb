@@ -379,14 +379,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               return const ListTile(
                                 leading: Icon(Icons.category),
                                 title: Text('Loading...'),
-                                trailing: Text('+ Rp 0'),
+                                trailing: Text('- Rp 0'),
                               );
                             }
                             if (!snapshot.hasData || snapshot.data == null) {
                               return const ListTile(
                                 leading: Icon(Icons.category),
                                 title: Text('Category not found'),
-                                trailing: Text('+ Rp 0'),
+                                trailing: Text('- Rp 0'),
                               );
                             }
                             final categoryName = snapshot.data!.name;
@@ -395,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               leading: const Icon(Icons.category),
                               title: Text(categoryName),
                               trailing: Text(
-                                '+ ${formatCurrency(total)}',
+                                '- ${formatCurrency(total)}',
                                 style: const TextStyle(fontSize: 15),
                               ),
                             );
