@@ -8,7 +8,6 @@ import 'home_screen.dart';
 class NavigationMenu extends StatelessWidget {
   NavigationMenu({super.key});
   final NavigationController navController = Get.find();
-
   final List<Widget> screens = const [
     HomeScreen(),
     ExpensesScreen(),
