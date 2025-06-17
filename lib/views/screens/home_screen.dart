@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:fp_ppb/models/account.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final CurrencyExchangeService _currencyService =
       CurrencyExchangeService.instance;
   final PageController _pageController = PageController();
+  DateTime? _lastTimeBackButtonWasTapped;
 
   List<Map<String, dynamic>> topExpenseCategories = [];
   List<Map<String, dynamic>> topIncomeCategories = [];
@@ -102,20 +104,20 @@ class _HomeScreenState extends State<HomeScreen> {
           endDate: endOfMonth,
         )
         .listen((categoryList) async {
-          List<Map<String, dynamic>> updatedList = [];
 
-          for (var category in categoryList.take(3)) {
-            final categoryModel = await firestoreService.getExpenseCategoryById(
-              userId,
-              category['categoryId'],
-            );
-            updatedList.add({
-              'categoryId': category['categoryId'],
-              'total': category['total'],
-              'name': categoryModel?.name ?? 'Unknown',
-            });
-          }
+      List<Map<String, dynamic>> updatedList = [];
 
+      for (var category in categoryList.take(5)) {
+        final categoryModel = await firestoreService.getExpenseCategoryById(userId, category['categoryId']);
+        updatedList.add({
+          'categoryId': category['categoryId'],
+          'total': category['total'],
+          'name': categoryModel?.name ?? 'Unknown',
+        });
+      }
+
+
+          
           if (mounted) {
             setState(() {
               topExpenseCategories = updatedList;
@@ -130,20 +132,18 @@ class _HomeScreenState extends State<HomeScreen> {
           endDate: endOfMonth,
         )
         .listen((categoryList) async {
-          List<Map<String, dynamic>> updatedList = [];
 
-          for (var category in categoryList.take(3)) {
-            final categoryModel = await firestoreService.getIncomeCategoryById(
-              userId,
-              category['categoryId'],
-            );
-            updatedList.add({
-              'categoryId': category['categoryId'],
-              'total': category['total'],
-              'name': categoryModel?.name ?? 'Unknown',
-            });
-          }
+      List<Map<String, dynamic>> updatedList = [];
 
+      for (var category in categoryList.take(5)) {
+        final categoryModel = await firestoreService.getIncomeCategoryById(userId, category['categoryId']);
+        updatedList.add({
+          'categoryId': category['categoryId'],
+          'total': category['total'],
+          'name': categoryModel?.name ?? 'Unknown',
+        });
+      }
+          
           if (mounted) {
             setState(() {
               topIncomeCategories = updatedList;
@@ -169,26 +169,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ValueListenableBuilder<Currency>(
-        valueListenable: _currencyService.activeCurrencyNotifier,
-        builder: (context, activeCurrency, child) {
-          final exchangeRate = _currencyService.exchangeRateNotifier.value;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 40),
-                _buildHeader(),
-                const SizedBox(height: 24),
-                _buildAccountCarousel(activeCurrency, exchangeRate),
-                const SizedBox(height: 24),
-                _buildTopCategories(activeCurrency, exchangeRate),
-              ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return; // If already popped, do nothing
+
+        final now = DateTime.now();
+        final isFirstTap = _lastTimeBackButtonWasTapped == null ||
+            now.difference(_lastTimeBackButtonWasTapped!) > const Duration(seconds: 2);
+
+        if (isFirstTap) {
+          _lastTimeBackButtonWasTapped = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tap back again to exit'),
+              duration: Duration(seconds: 2),
             ),
           );
-        },
+        } else {
+          // If the second tap is within 2 seconds, close the app
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: ValueListenableBuilder<Currency>(
+          valueListenable: _currencyService.activeCurrencyNotifier,
+          builder: (context, activeCurrency, child) {
+            final exchangeRate = _currencyService.exchangeRateNotifier.value;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 40),
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildAccountCarousel(activeCurrency, exchangeRate),
+                  const SizedBox(height: 24),
+                  _buildTopCategories(activeCurrency, exchangeRate),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -400,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Top 3 Expense Categories (This Month)',
+          'Top 5 Expense Categories (This Month)',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -457,8 +480,8 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 16),
-        Text(
-          'Top 3 Income Categories (This Month)',
+        Text('Top 5 Income Categories (This Month)',
+
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,

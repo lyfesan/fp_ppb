@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fp_ppb/models/currency_model.dart';
 import 'package:fp_ppb/models/app_user.dart';
 import 'package:fp_ppb/services/currency_exchange_service.dart';
@@ -23,6 +24,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // Get instance of the currency service
   final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   late Future<AppUser?> _userFuture;
+  DateTime? _lastTimeBackButtonWasTapped;
 
   @override
   void initState() {
@@ -71,49 +73,72 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: true,
-      ),
-      body: FutureBuilder<AppUser?>(
-        future: _userFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('User not found.'));
-          }
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return; // If already popped, do nothing
 
-          final user = snapshot.data!;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildProfileDisplay(user, context),
-                const SizedBox(height: 20),
-                _buildSettingsMenu(context),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16)
-                    ),
-                    onPressed: _signOut,
-                    child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-              ],
+        final now = DateTime.now();
+        final isFirstTap = _lastTimeBackButtonWasTapped == null ||
+            now.difference(_lastTimeBackButtonWasTapped!) > const Duration(seconds: 2);
+
+        if (isFirstTap) {
+          _lastTimeBackButtonWasTapped = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tap back again to exit'),
+              duration: Duration(seconds: 2),
             ),
           );
-        },
+        } else {
+          // If the second tap is within 2 seconds, close the app
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Profile'),
+          centerTitle: true,
+        ),
+        body: FutureBuilder<AppUser?>(
+          future: _userFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+            if (!snapshot.hasData || snapshot.data == null) {
+              return const Center(child: Text('User not found.'));
+            }
+
+            final user = snapshot.data!;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildProfileDisplay(user, context),
+                  const SizedBox(height: 20),
+                  _buildSettingsMenu(context),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16)
+                      ),
+                      onPressed: _signOut,
+                      child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
