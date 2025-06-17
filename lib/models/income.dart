@@ -5,6 +5,7 @@ class Income {
   final String name;
   final DateTime date;
   final double amount;
+  final String accountId;
   final String categoryId;
   final String userId;
 
@@ -13,6 +14,7 @@ class Income {
     required this.name,
     required this.date,
     required this.amount,
+    required this.accountId,
     required this.categoryId,
     required this.userId,
   });
@@ -24,6 +26,7 @@ class Income {
       name: data['name'],
       date: (data['date'] as Timestamp).toDate(),
       amount: data['amount'],
+      accountId: data['accountId'],
       categoryId: data['categoryId'],
       userId: data['userId'],
     );
@@ -34,6 +37,7 @@ class Income {
       'name': name,
       'date': Timestamp.fromDate(date),
       'amount': amount,
+      'accountId': accountId,
       'categoryId': categoryId,
       'userId': userId,
     };
@@ -43,6 +47,7 @@ class Income {
     String? id,
     String? name,
     double? amount,
+    String? accountId,
     String? categoryId,
     DateTime? date,
     String? userId,
@@ -51,6 +56,7 @@ class Income {
       id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
+      accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
       date: date ?? this.date,
       userId: userId ?? this.userId,

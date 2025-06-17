@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fp_ppb/models/currency_model.dart';
+import 'package:fp_ppb/services/currency_exchange_service.dart';
 import 'package:fp_ppb/models/category.dart';
 import 'package:fp_ppb/services/firebase_auth_service.dart';
-import 'package:fp_ppb/views/screens/category_expense_screen.dart';
+import 'package:intl/intl.dart';
 
+import '../../../models/account.dart';
 import '../../../models/expense.dart';
 import '../../../services/firestore_service.dart';
 
@@ -25,107 +28,133 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final _newCategoryController = TextEditingController();
 
   String? _selectedCategoryId;
+  String? _selectedAccountId;
   bool _isAddingNewCategory = false;
   late DateTime _selectedDate;
 
   final FirestoreService firestoreService = FirestoreService();
+  final CurrencyExchangeService _currencyService = CurrencyExchangeService.instance;
   bool _isSaving = false;
+
+  String? _selectedIcon;
+
+  final List<String> _iconOptions = [
+    'bills.png',
+    'bonus.png',
+    'chocolate.png',
+    'duck.png',
+    'education.png',
+    'energy.png',
+    'food.png',
+    'gift.png',
+    'handbody.png',
+    'health.png',
+    'iguana.png',
+    'invest.png',
+    'money.png',
+    'pet_food.png',
+    'pigeon.png',
+    'popcorn.png',
+    'sheep.png',
+    'shirt.png',
+    'shopping.png',
+    'transportation.png',
+    'water.png',
+    'workout.png',
+  ];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.expense.name);
-    // Format amount as string with dots:
-    _amountController = TextEditingController(text: formatWithDots(widget.expense.amount.toInt().toString()));
     _selectedCategoryId = widget.expense.categoryId;
+    _selectedAccountId = widget.expense.accountId;
     _selectedDate = widget.expense.date;
+
+    // Convert the stored IDR amount to the active currency for initial display
+    final initialDisplayAmount = widget.expense.amount * _currencyService.exchangeRateNotifier.value;
+    _amountController = TextEditingController(text: _formatForDisplay(initialDisplayAmount));
+
+    _amountController.addListener(() => setState(() {}));
   }
 
-  String formatWithDots(String input) {
-    // Remove non-digit chars (like existing dots)
-    String digitsOnly = input.replaceAll(RegExp(r'[^\d]'), '');
-
-    StringBuffer buffer = StringBuffer();
-    int len = digitsOnly.length;
-
-    for (int i = 0; i < len; i++) {
-      buffer.write(digitsOnly[i]);
-
-      int posFromRight = len - i - 1;
-      if (posFromRight > 0 && posFromRight % 3 == 0) {
-        buffer.write('.');
-      }
-    }
-
-    return buffer.toString();
+  String _formatForDisplay(double amount) {
+    // Formatter for display, allows decimals for non-IDR currencies
+    final format = NumberFormat("#,##0.##", "en_US");
+    return format.format(amount);
   }
 
   Future<void> _updateExpense() async {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("No user logged in.");
 
-      // If adding new category inline, add it first
       if (_isAddingNewCategory) {
         final newCategoryName = _newCategoryController.text.trim();
-        if (newCategoryName.isEmpty) {
+        if (newCategoryName.isEmpty || _selectedIcon == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter a category name')),
-          );
-          setState(() {
-            _isSaving = false;
-          });
+              const SnackBar(content: Text('Please enter a category name and select an icon')));
+          setState(() => _isSaving = false);
           return;
         }
+
         final newCategoryId = await firestoreService.addCategoryExpense(
           user.uid,
           newCategoryName,
+          _selectedIcon!, // Add this
         );
         _selectedCategoryId = newCategoryId;
-        _isAddingNewCategory = false;
-        _newCategoryController.clear();
       }
 
       if (_selectedCategoryId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a category')),
-        );
-        setState(() {
-          _isSaving = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a category')));
+        setState(() => _isSaving = false);
         return;
       }
 
-      final cleanedAmount = _amountController.text.replaceAll('.', '').trim();
-      final amount = double.parse(cleanedAmount);
+      // --- CONVERSION LOGIC ON SAVE ---
+      final amountInActiveCurrency = double.tryParse(
+          _amountController.text.replaceAll('.', '').replaceAll(',', '')
+      ) ?? 0.0;
+      final exchangeRate = _currencyService.exchangeRateNotifier.value;
+      // Convert the input amount back to IDR for saving
+      final amountInIdr = (exchangeRate > 0) ? amountInActiveCurrency / exchangeRate : 0.0;
 
       final updatedExpense = widget.expense.copyWith(
         name: _nameController.text.trim(),
-        amount: amount,
+        amount: amountInIdr, // Save the converted IDR value
+        accountId: _selectedAccountId,
         categoryId: _selectedCategoryId,
         date: _selectedDate,
       );
 
       await firestoreService.updateExpense(expense: updatedExpense);
-
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update expense: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update expense: $e')));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  TextInputFormatter thousandsSeparatorInputFormatter() {
+    final formatter = NumberFormat.decimalPattern('id'); // uses '.' for thousands
+    return TextInputFormatter.withFunction((oldValue, newValue) {
+      final text = newValue.text.replaceAll('.', '').replaceAll(',', '');
+      if (text.isEmpty) return newValue.copyWith(text: '');
+
+      final number = int.tryParse(text);
+      if (number == null) return oldValue;
+
+      final newText = formatter.format(number);
+      return TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
+    });
   }
 
   void _pickDate() async {
@@ -135,16 +164,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   @override
   void dispose() {
+    _amountController.removeListener(() {});
     _nameController.dispose();
     _amountController.dispose();
     _newCategoryController.dispose();
@@ -162,291 +187,126 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           child: ListView(
             children: [
               // Name field
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Expense Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter a name' : null,
-                  ),
-                ],
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Expense Name', border: OutlineInputBorder()),
+                validator: (v) => v == null || v.isEmpty ? 'Enter a name' : null,
               ),
               const SizedBox(height: 16),
 
-              // Amount field with formatting
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Amount',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
+              // Amount Field with updated logic
+              ValueListenableBuilder<Currency>(
+                valueListenable: _currencyService.activeCurrencyNotifier,
+                builder: (context, activeCurrency, child) {
+                  return TextFormField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      prefixText: 'Rp ',
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      border: const OutlineInputBorder(),
+                      prefixText: '${activeCurrency.symbol} ',
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [thousandsSeparatorInputFormatter()],
                     validator: (value) {
-                      final cleaned = value?.replaceAll('.', '') ?? '';
-                      final parsed = double.tryParse(cleaned);
-                      if (parsed == null || parsed <= 0) {
+                      final clean = value?.replaceAll('.', '').replaceAll(',', '') ?? '';
+                      if (clean.isEmpty || (double.tryParse(clean) ?? 0) <= 0) {
                         return 'Enter a valid amount';
                       }
                       return null;
                     },
-                    onChanged: (value) {
-                      final formatted = formatWithDots(value);
-                      if (formatted != value) {
-                        _amountController.value = TextEditingValue(
-                          text: formatted,
-                          selection: TextSelection.collapsed(offset: formatted.length),
-                        );
-                      }
-                    },
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
 
-              // Category dropdown with inline add new category
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Category',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+              // Source Account
+              StreamBuilder<QuerySnapshot>(
+                stream: firestoreService.getFinanceAccountStream(FirebaseAuthService.currentUser!.uid),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.hasError || snapshot.data!.docs.isEmpty) return const Text('No accounts found.');
+
+                  final accounts = snapshot.data!.docs.map((doc) => AccountModel.fromFirestore(doc)).toList();
+                  return DropdownButtonFormField<String>(
+                    value: _selectedAccountId,
+                    items: accounts.map((account) => DropdownMenuItem<String>(value: account.id, child: Text(account.name))).toList(),
+                    onChanged: (value) => setState(() => _selectedAccountId = value),
+                    decoration: const InputDecoration(labelText: 'Source Account', border: OutlineInputBorder()),
+                    validator: (v) => v == null || v.isEmpty ? 'Please select an account' : null,
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Category Dropdown
+              _buildCategoryDropdown(),
+
+              if (_isAddingNewCategory) ...[
+                TextFormField(
+                  controller: _newCategoryController,
+                  decoration: const InputDecoration(labelText: 'New Category Name', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                const Text('Choose an icon:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 150, // Adjust height to your design
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.horizontal,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: firestoreService.getCategoriesExpenseStream(
-                      FirebaseAuthService.currentUser!.uid,
-                    ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError) {
-                        return const Text('Error loading categories');
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No categories found.');
-                      }
+                    itemCount: _iconOptions.length,
+                    itemBuilder: (context, index) {
+                      final iconName = _iconOptions[index];
+                      final isSelected = iconName == _selectedIcon;
 
-                      final categories = snapshot.data!.docs
-                          .map((doc) => CategoryModel.fromFirestore(doc))
-                          .toList();
-
-                      // Reset category selection if current selection is deleted
-                      final categoryIds = categories.map((c) => c.id).toList();
-                      if (!categoryIds.contains(_selectedCategoryId)) {
-                        _selectedCategoryId = null;
-                      }
-
-                      List<DropdownMenuItem<String>> dropdownItems =
-                      categories.map((category) {
-                        return DropdownMenuItem<String>(
-                          value: category.id,
-                          child: Text(category.name),
-                        );
-                      }).toList();
-
-                      dropdownItems.add(
-                        DropdownMenuItem(
-                          value: '--add-new-category--',
-                          child: Row(
-                            children: const [
-                              Icon(Icons.add, color: Colors.blueAccent),
-                              SizedBox(width: 8),
-                              Text(
-                                'Add New Category',
-                                style: TextStyle(
-                                  color: Colors.blueAccent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedIcon = iconName),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isSelected ? Colors.blueAccent : Colors.grey.shade300,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
                           ),
+                          child: Image.asset('assets/icons/$iconName', width: 40, height: 40),
                         ),
-                      );
-
-                      return DropdownButtonFormField<String>(
-                        value: _selectedCategoryId,
-                        items: dropdownItems,
-                        onChanged: (value) {
-                          if (value == '--add-new-category--') {
-                            setState(() {
-                              _isAddingNewCategory = true;
-                              _selectedCategoryId = null;
-                            });
-                          } else {
-                            setState(() {
-                              _isAddingNewCategory = false;
-                              _selectedCategoryId = value;
-                              _newCategoryController.clear();
-                            });
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (_isAddingNewCategory) return null;
-                          if (value == null || value.isEmpty) {
-                            return 'Please select a category';
-                          }
-                          return null;
-                        },
                       );
                     },
                   ),
-                ],
-              ),
-
-              // Inline new category input if adding new category
-              if (_isAddingNewCategory)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    const Text(
-                      'New Category Name',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _newCategoryController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (_isAddingNewCategory &&
-                            (value == null || value.trim().isEmpty)) {
-                          return 'Please enter a category name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
                 ),
-
+              ],
               const SizedBox(height: 16),
 
               // Date picker
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Date: ${_selectedDate.toLocal().toString().split(' ')[0]}',
-                  ),
-                  TextButton.icon(
-                    onPressed: _pickDate,
-                    icon: const Icon(Icons.calendar_today),
-                    label: const Text('Pick Date'),
-                  ),
+                  Text('Date: ${DateFormat('dd MMM y').format(_selectedDate)}', style: const TextStyle(fontSize: 16)),
+                  TextButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_today), label: const Text('Change')),
                 ],
               ),
-
               const SizedBox(height: 24),
 
+              // Buttons
               ElevatedButton(
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
                 onPressed: _isSaving ? null : _updateExpense,
-                child: _isSaving
-                    ? const CircularProgressIndicator()
-                    : const Text('Update Expense'),
+                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Update Expense'),
               ),
-
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 12),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Expense'),
-                      content: const Text(
-                          'Are you sure you want to delete this expense?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    setState(() {
-                      _isSaving = true;
-                    });
-
-                    try {
-                      final user = FirebaseAuth.instance.currentUser;
-                      if (user != null) {
-                        await firestoreService.deleteExpense(
-                          expenseId: widget.expense.id,
-                          userId: user.uid,
-                        );
-                        if (mounted) Navigator.pop(context);
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                              Text('Failed to delete expense: $e')),
-                        );
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-                      }
-                    }
-                  }
-                },
-                child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Delete Expense'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)),
+                onPressed: _isSaving ? null : _deleteExpense,
+                child: _isSaving ? const SizedBox.shrink() : const Text('Delete Expense', style: TextStyle(color: Colors.white),),
               ),
             ],
           ),
@@ -454,5 +314,72 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       ),
     );
   }
-}
 
+  Widget _buildCategoryDropdown() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: firestoreService.getCategoriesExpenseStream(FirebaseAuthService.currentUser!.uid),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError || snapshot.data!.docs.isEmpty) return const Text('No categories found.');
+
+        final categories = snapshot.data!.docs.map((doc) => CategoryModel.fromFirestore(doc)).toList();
+        if (!categories.any((c) => c.id == _selectedCategoryId)) _selectedCategoryId = null;
+
+        List<DropdownMenuItem<String>> dropdownItems = categories.map((category) {
+          return DropdownMenuItem<String>(value: category.id, child: Text(category.name));
+        }).toList();
+
+        dropdownItems.add(
+          DropdownMenuItem(
+            value: '--add-new-category--',
+            child: Row(children: const [Icon(Icons.add, color: Colors.blueAccent), SizedBox(width: 8), Text('Add New Category', style: TextStyle(color: Colors.blueAccent))]),
+          ),
+        );
+
+        return DropdownButtonFormField<String>(
+          value: _selectedCategoryId,
+          items: dropdownItems,
+          onChanged: (value) {
+            setState(() {
+              if (value == '--add-new-category--') {
+                _isAddingNewCategory = true;
+                _selectedCategoryId = null;
+              } else {
+                _isAddingNewCategory = false;
+                _selectedCategoryId = value;
+              }
+            });
+          },
+          decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+          validator: (v) => !_isAddingNewCategory && (v == null || v.isEmpty) ? 'Please select a category' : null,
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteExpense() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Expense'),
+        content: const Text('Are you sure you want to delete this expense?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isSaving = true);
+      try {
+        await firestoreService.deleteExpense(expenseId: widget.expense.id, userId: widget.expense.userId);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete expense: $e')));
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+}
