@@ -31,10 +31,7 @@ MoneySense is a mobile solution for personal financial management. Its main feat
 
 Here's a look at the MoneySense app:
 
-<img src="assets/showcase-app-1.png" width="200"/>
-<img src="assets/showcase-app-2.png" width="200"/>
-<img src="assets/showcase-app-3.png" width="200"/>
-<img src="assets/showcase-app-4.png" width="200"/>
+<img src="assets/showcase-app-1.png" width="200"/><img src="assets/showcase-app-2.png" width="200"/><img src="assets/showcase-app-3.png" width="200"/><img src="assets/showcase-app-4.png" width="200"/>
 
 
 ## 3. Installation
